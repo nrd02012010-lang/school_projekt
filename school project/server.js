@@ -6,6 +6,10 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// === ТВОЙ ЛИЧНЫЙ ДЛИННЫЙ ПАРОЛЬ АДМИНА ===
+// Можешь поменять значение в кавычках на любой другой пароль
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'xK9#mP$7vL2!qN8wE5@zY1R4tU6iO3pS';
+
 // === ТВОИ ДАННЫЕ БОТА ===
 const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
 const BOT_USERNAME = 'bot8830924380'; 
@@ -136,6 +140,40 @@ app.post('/api/vote', (req, res) => {
                 res.json({ success: true });
             }
         );
+    });
+});
+
+// === 5. АДМИНКА (СТАТИСТИКА И СПИСОК ПРОГОЛОСОВАВШИХ) ===
+app.get('/api/admin/stats', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+
+    if (!clientPassword || clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный личный код администратора!' });
+    }
+
+    // Подсчет голосов
+    const statsQuery = `
+        SELECT c.id, c.name, COUNT(v.id) as votes 
+        FROM candidates c 
+        LEFT JOIN voters v ON c.id = v.candidateId 
+        GROUP BY c.id
+    `;
+
+    // Выгрузка полного списка с именами
+    const votersQuery = `
+        SELECT v.fullName, v.grade, v.phone, c.name as candidateName 
+        FROM voters v 
+        JOIN candidates c ON v.candidateId = c.id 
+        ORDER BY v.id DESC
+    `;
+
+    db.all(statsQuery, [], (err, stats) => {
+        if (err) return res.status(500).json({ error: 'Ошибка БД: ' + err.message });
+
+        db.all(votersQuery, [], (err, voters) => {
+            if (err) return res.status(500).json({ error: 'Ошибка БД: ' + err.message });
+            res.json({ stats, voters });
+        });
     });
 });
 
