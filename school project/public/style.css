@@ -1,4 +1,3 @@
-/* Основные стили */
 body {
     background-color: #121212;
     color: #ffffff;
@@ -12,7 +11,8 @@ body {
 
 h1 {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
+    font-size: 22px;
 }
 
 /* Карточки-секции */
@@ -32,40 +32,47 @@ h3 {
     text-align: center;
 }
 
-/* Поля ввода и кнопки */
+/* ВСЕ поля ввода выглядят одинаково (как Код из бота) */
 input[type="text"],
 input[type="password"],
 input[type="file"],
 textarea {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     margin-bottom: 12px;
-    background: #2a2a2a;
-    border: 1px solid #444;
+    background: #2a2a2a !important; /* Темный фон */
+    border: 1px solid #444 !important;
     border-radius: 5px;
-    color: #fff;
+    color: #fff !important;
     box-sizing: border-box;
+    font-size: 14px;
+}
+
+/* Цвет плейсхолдеров (текст внутри до ввода) */
+input::placeholder, textarea::placeholder {
+    color: #888;
 }
 
 button {
     width: 100%;
-    padding: 10px;
-    background-color: #00a8ff; /* Голубой цвет */
+    padding: 12px;
+    background-color: #00a8ff;
     color: white;
     border: none;
     border-radius: 5px;
     font-weight: bold;
     cursor: pointer;
     transition: background 0.2s;
+    margin-bottom: 10px;
 }
 
 button:hover {
-    background-color: #0097e6; /* Чуть темнее при наведении */
+    background-color: #0097e6;
 }
 
 /* Ссылки */
 a {
-    color: #00a8ff; /* Голубой цвет */
+    color: #00a8ff;
     text-decoration: none;
     display: inline-block;
     margin-bottom: 10px;
@@ -104,7 +111,7 @@ a:hover {
 }
 
 .candidate-card.selected {
-    border-color: #00a8ff; /* Выделение выбранного кандидата голубым */
+    border-color: #00a8ff;
     background-color: #1a2530;
 }
 
@@ -127,15 +134,15 @@ a:hover {
 
 /* Кнопка шестеренки */
 #btn-gear {
-    background: none;
+    background: transparent;
     border: none;
-    font-size: 20px;
+    font-size: 22px;
     cursor: pointer;
     width: auto;
-    float: right;
+    padding: 0;
 }
 
-/* Скрывающий класс — САМОЕ ВАЖНОЕ */
+/* Скрывающий класс */
 .hidden {
     display: none !important;
 }
