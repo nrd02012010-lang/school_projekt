@@ -8,7 +8,7 @@ const PORT = process.env.PORT || 3000;
 
 // === ТВОЙ ЛИЧНЫЙ ДЛИННЫЙ ПАРОЛЬ АДМИНА ===
 // Можешь поменять значение в кавычках на любой другой пароль
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'xK9#mP$7vL2!qN8wE5@zY1R4tU6iO3pS';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
 // === ТВОИ ДАННЫЕ БОТА ===
 const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
