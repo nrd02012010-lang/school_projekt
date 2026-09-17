@@ -7,7 +7,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // === ТВОЙ ЛИЧНЫЙ ДЛИННЫЙ ПАРОЛЬ АДМИНА ===
-// Можешь поменять значение в кавычках на любой другой пароль
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
 // === ТВОИ ДАННЫЕ БОТА ===
@@ -40,12 +39,11 @@ db.serialize(() => {
         candidateId INTEGER
     )`);
 
-    // Дефолтные кандидаты для проверки
+    // Дефолтные кандидаты при первом запуске
     db.get('SELECT COUNT(*) as count FROM candidates', (err, row) => {
         if (row && row.count === 0) {
             db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 1']);
             db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 2']);
-            db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 3']);
         }
     });
 });
@@ -110,7 +108,7 @@ app.post('/api/verify-code', (req, res) => {
     res.json({ success: true });
 });
 
-// 3. Список кандидатов
+// 3. Список кандидатов (для всех)
 app.get('/api/candidates', (req, res) => {
     db.all('SELECT id, name FROM candidates', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -143,7 +141,9 @@ app.post('/api/vote', (req, res) => {
     });
 });
 
-// === 5. АДМИНКА (СТАТИСТИКА И СПИСОК ПРОГОЛОСОВАВШИХ) ===
+// === 5. АДМИНКА (СТАТИСТИКА И УПРАВЛЕНИЕ КАНДИДАТАМИ) ===
+
+// Получение статистики и списка проголосовавших
 app.get('/api/admin/stats', (req, res) => {
     const clientPassword = req.headers['x-admin-password'];
 
@@ -151,7 +151,6 @@ app.get('/api/admin/stats', (req, res) => {
         return res.status(403).json({ error: 'Неверный личный код администратора!' });
     }
 
-    // Подсчет голосов
     const statsQuery = `
         SELECT c.id, c.name, COUNT(v.id) as votes 
         FROM candidates c 
@@ -159,7 +158,6 @@ app.get('/api/admin/stats', (req, res) => {
         GROUP BY c.id
     `;
 
-    // Выгрузка полного списка с именами
     const votersQuery = `
         SELECT v.fullName, v.grade, v.phone, c.name as candidateName 
         FROM voters v 
@@ -174,6 +172,40 @@ app.get('/api/admin/stats', (req, res) => {
             if (err) return res.status(500).json({ error: 'Ошибка БД: ' + err.message });
             res.json({ stats, voters });
         });
+    });
+});
+
+// Добавить кандидата (только для админа)
+app.post('/api/admin/add-candidate', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Введите имя кандидата' });
+    }
+
+    db.run('INSERT INTO candidates (name) VALUES (?)', [name.trim()], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true, id: this.lastID, name: name.trim() });
+    });
+});
+
+// Удалить кандидата (только для админа)
+app.post('/api/admin/delete-candidate', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'Не указан ID кандидата' });
+
+    db.run('DELETE FROM candidates WHERE id = ?', [id], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
     });
 });
 
