@@ -3,137 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админка — Голосование</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 0 10px; }
-        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
-        input, button { padding: 10px; margin: 5px 0; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f4f4f4; }
-        .del-btn { background: red; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 10px; }
-        .candidate-card { background: #f8f9fa; border: 2px solid #007bff; border-radius: 8px; padding: 15px; text-align: center; }
-        .candidate-card h4 { margin: 0 0 5px 0; }
-        .candidate-card .votes { font-size: 24px; font-weight: bold; color: #007bff; }
-    </style>
+    <title>Панель Администратора</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>Панель Администратора</h2>
+    <div class="container" style="max-width: 800px;">
+        <h1>Админ-панель</h1>
 
-    <div class="card">
-        <h3>Вход</h3>
-        <input type="tel" id="adminPhone" placeholder="Введите ваш номер админа">
-        <button onclick="loadAdminData()">Войти</button>
+        <!-- Форма входа -->
+        <div id="login-card" class="card">
+            <h2>Доступ ограничен</h2>
+            <div class="form-group">
+                <input type="password" id="adminPassword" placeholder="Введите ваш личный код">
+                <button id="btn-login">Войти в панель</button>
+            </div>
+        </div>
+
+        <!-- Панель управления -->
+        <div id="admin-panel" class="card hidden">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h2>Результаты голосования</h2>
+                <button id="btn-refresh" style="padding: 8px 16px; font-size: 14px;">Обновить данные</button>
+            </div>
+
+            <h3 style="margin-top: 20px;">Подсчет голосов</h3>
+            <div id="results-stats"></div>
+
+            <h3 style="margin-top: 30px;">Детальный список проголосовавших</h3>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px; color: #fff;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #00ff66; text-align: left;">
+                            <th style="padding: 10px;">ФИО</th>
+                            <th style="padding: 10px;">Класс</th>
+                            <th style="padding: 10px;">Телефон</th>
+                            <th style="padding: 10px;">Кандидат</th>
+                        </tr>
+                    </thead>
+                    <tbody id="votes-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="message" class="message hidden"></div>
     </div>
 
-    <div id="admin-content" style="display: none;">
-        <div class="card">
-            <h3>📊 Результаты голосов</h3>
-            <div id="results-list" class="results-grid"></div>
-        </div>
-
-        <div class="card">
-            <h3>➕ Добавить кандидата</h3>
-            <input type="text" id="candName" placeholder="ФИО Кандидата">
-            <input type="text" id="candClass" placeholder="Класс">
-            <button onclick="addCandidate()">Добавить</button>
-        </div>
-
-        <div class="card">
-            <h3>👥 Проголосовавшие (Чистка фейков)</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ФИО</th>
-                        <th>Класс</th>
-                        <th>Телефон</th>
-                        <th>Голос</th>
-                        <th>Действие</th>
-                    </tr>
-                </thead>
-                <tbody id="voters-table"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        async function loadAdminData() {
-            const adminPhone = document.getElementById('adminPhone').value;
-
-            const candRes = await fetch('/api/candidates');
-            const candidates = await candRes.json();
-
-            const res = await fetch('/api/admin/voters', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminPhone })
-            });
-
-            if (res.status === 403) {
-                alert('Неверный номер администратора');
-                return;
-            }
-
-            const voters = await res.json();
-            document.getElementById('admin-content').style.display = 'block';
-
-            const resultsList = document.getElementById('results-list');
-            resultsList.innerHTML = '';
-            candidates.forEach(c => {
-                resultsList.innerHTML += `
-                    <div class="candidate-card">
-                        <h4>${c.name}</h4>
-                        <div>${c.class} класс</div>
-                        <div class="votes">${c.votes_count} голосов</div>
-                    </div>
-                `;
-            });
-
-            const tbody = document.getElementById('voters-table');
-            tbody.innerHTML = '';
-            voters.forEach(v => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${v.first_name} ${v.last_name}</td>
-                        <td>${v.user_class}</td>
-                        <td>${v.phone}</td>
-                        <td><b>${v.candidate_name || 'Удален'}</b></td>
-                        <td><button class="del-btn" onclick="deleteVoter(${v.id})">Удалить голос</button></td>
-                    </tr>
-                `;
-            });
-        }
-
-        async function addCandidate() {
-            const adminPhone = document.getElementById('adminPhone').value;
-            const name = document.getElementById('candName').value;
-            const candidateClass = document.getElementById('candClass').value;
-
-            await fetch('/api/admin/add-candidate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminPhone, name, candidateClass })
-            });
-
-            alert('Кандидат добавлен!');
-            document.getElementById('candName').value = '';
-            document.getElementById('candClass').value = '';
-            loadAdminData();
-        }
-
-        async function deleteVoter(voterId) {
-            if (!confirm('Удалить голос?')) return;
-            const adminPhone = document.getElementById('adminPhone').value;
-
-            await fetch('/api/admin/delete-voter', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ adminPhone, voterId })
-            });
-
-            loadAdminData();
-        }
-    </script>
+    <script src="admin.js"></script>
 </body>
 </html>
