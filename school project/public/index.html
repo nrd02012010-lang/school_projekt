@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -6,6 +6,38 @@
     <title>Выборы Президента Школы</title>
     <link rel="stylesheet" href="style.css">
     <style>
+        /* Базовый сброс под единообразный темный стиль полей */
+        input[type="text"],
+        input[type="tel"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            background: #222 !important;
+            border: 1px solid #444 !important;
+            border-radius: 5px;
+            color: #fff !important;
+            padding: 12px !important;
+            font-size: 14px;
+            box-sizing: border-box;
+            outline: none;
+            margin-bottom: 12px;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #777 !important;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            background: #222 !important;
+            border: 1px solid #444 !important;
+            border-radius: 5px;
+            color: #fff !important;
+            padding: 8px !important;
+            box-sizing: border-box;
+            margin-bottom: 12px;
+        }
+
         /* Кнопка Шестеренка */
         .admin-gear {
             position: fixed;
@@ -39,7 +71,7 @@
             margin-bottom: 20px;
         }
 
-        /* Карточка кандидата (с окантовкой, адаптирована под телефон) */
+        /* Карточка кандидата */
         .candidate-card {
             border: 2px solid #333;
             border-radius: 16px;
@@ -113,12 +145,8 @@
         .admin-form-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 5px;
             margin-bottom: 15px;
-        }
-        .admin-form-group input, .admin-form-group textarea {
-            width: 100%;
-            box-sizing: border-box;
         }
     </style>
 </head>
@@ -150,9 +178,9 @@
             <input type="text" id="fullName" placeholder="Ваше ФИО (например, Иванов Иван)">
             <input type="text" id="grade" placeholder="Ваш класс (например, 10-А)">
             
-            <h3 style="margin-top:20px;">Выберите кандидата:</h3>
+            <h3 style="margin-top:20px; text-align: center;">Выберите кандидата:</h3>
             
-            <!-- Лента карточек кандидатов (листается вниз) -->
+            <!-- Лента карточек кандидатов -->
             <div id="candidates-list" class="candidates-feed"></div>
 
             <button id="btn-submit-vote" class="btn">Отправить голос</button>
@@ -174,14 +202,14 @@
                 <input type="text" id="new-candidate-name" placeholder="ФИО кандидата">
                 <input type="text" id="new-candidate-grade" placeholder="Класс (например, 11-Б)">
                 
-                <label style="font-size:13px; color:#aaa; text-align:left;">Загрузить фото кандидата с устройства:</label>
-                <input type="file" id="new-candidate-photo" accept="image/*" style="background:#222; padding:8px; border-radius:5px; color:#fff;">
+                <label style="font-size:13px; color:#aaa; text-align:left; margin-bottom: 5px;">Загрузить фото кандидата:</label>
+                <input type="file" id="new-candidate-photo" accept="image/*">
                 
-                <textarea id="new-candidate-description" placeholder="Предвыборная программа / описание" rows="3" style="resize:vertical; padding: 10px; background:#222; color:#fff; border:1px solid #444; border-radius:5px;"></textarea>
+                <textarea id="new-candidate-description" placeholder="Предвыборная программа / описание" rows="3" style="resize:vertical;"></textarea>
                 <button id="btn-add-candidate" class="btn" style="margin-top: 5px;">Добавить кандидата</button>
             </div>
 
-            <h3>Текущие кандидаты:</h3>
+            <h3 style="text-align: left; margin-top: 15px;">Текущие кандидаты:</h3>
             <div id="admin-candidates-list" style="margin-bottom: 20px;"></div>
 
             <hr style="border-color: #444; margin: 20px 0;">
@@ -191,7 +219,7 @@
             
             <div id="results-stats"></div>
 
-            <h3 style="margin-top: 20px;">Проголосовавшие ученики:</h3>
+            <h3 style="margin-top: 20px; text-align: left;">Проголосовавшие ученики:</h3>
             <div style="overflow-x: auto;">
                 <table>
                     <thead>
