@@ -1,147 +1,144 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const TelegramBot = require('node-telegram-bot-api');
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-// твой номер телефона для входа в админку
-const ADMIN_PHONE = '87476475569'; 
+// === ТВОИ ДАННЫЕ БОТА ===
+const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
+const BOT_USERNAME = 'bot8830924380'; 
+
+const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Инициализация базы данных
+// === БАЗА ДАННЫХ ===
 const db = new sqlite3.Database('./database.db', (err) => {
-    if (err) console.error('Ошибка БД:', err);
+    if (err) console.error('Ошибка БД:', err.message);
     else console.log('База данных подключена.');
 });
 
-// Создание таблиц
 db.serialize(() => {
-    db.run(`
-        CREATE TABLE IF NOT EXISTS candidates (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            class TEXT NOT NULL,
-            photo_url TEXT DEFAULT '',
-            votes_count INTEGER DEFAULT 0
-        )
-    `);
+    db.run(`CREATE TABLE IF NOT EXISTS candidates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        votes INTEGER DEFAULT 0
+    )`);
 
-    db.run(`
-        CREATE TABLE IF NOT EXISTS voters (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            phone TEXT UNIQUE NOT NULL,
-            first_name TEXT NOT NULL,
-            last_name TEXT NOT NULL,
-            user_class TEXT NOT NULL,
-            voted_candidate_id INTEGER,
-            FOREIGN KEY (voted_candidate_id) REFERENCES candidates (id)
-        )
-    `);
+    db.run(`CREATE TABLE IF NOT EXISTS voters (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone TEXT UNIQUE NOT NULL,
+        fullName TEXT,
+        grade TEXT,
+        candidateId INTEGER
+    )`);
+
+    // Дефолтные кандидаты для проверки
+    db.get('SELECT COUNT(*) as count FROM candidates', (err, row) => {
+        if (row && row.count === 0) {
+            db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 1']);
+            db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 2']);
+            db.run('INSERT INTO candidates (name) VALUES (?)', ['Кандидат 3']);
+        }
+    });
 });
 
-// --- API: Для учеников ---
+const sessions = {};
 
-// Получить список кандидатов
+// 1. Ввод номера -> Ссылка на Telegram
+app.post('/api/request-code', (req, res) => {
+    let { phone } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Укажите номер телефона' });
+
+    phone = phone.replace(/\D/g, '');
+    if (phone.startsWith('7')) phone = '8' + phone.slice(1);
+
+    db.get('SELECT id FROM voters WHERE phone = ?', [phone], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (row) return res.status(400).json({ error: 'Этот номер уже участвовал в голосовании!' });
+
+        const sessionId = Math.random().toString(36).substring(2, 10);
+
+        sessions[sessionId] = {
+            phone: phone,
+            code: null,
+            verified: false,
+            expires: Date.now() + 5 * 60 * 1000
+        };
+
+        const botLink = `https://t.me/${BOT_USERNAME}?start=${sessionId}`;
+        res.json({ success: true, sessionId, botLink });
+    });
+});
+
+// Обработка клика в Telegram (/start)
+bot.onText(/\/start (.+)/, (msg, match) => {
+    const chatId = msg.chat.id;
+    const sessionId = match[1];
+
+    if (!sessions[sessionId] || Date.now() > sessions[sessionId].expires) {
+        return bot.sendMessage(chatId, 'Сессия истекла. Запросите код заново на сайте.');
+    }
+
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    sessions[sessionId].code = code;
+
+    bot.sendMessage(chatId, `Ваш код для авторизации: ${code}`);
+});
+
+// 2. Проверка кода
+app.post('/api/verify-code', (req, res) => {
+    const { sessionId, code } = req.body;
+    const session = sessions[sessionId];
+
+    if (!session || Date.now() > session.expires) {
+        return res.status(400).json({ error: 'Сессия истекла. Попробуйте снова.' });
+    }
+
+    if (session.code !== code) {
+        return res.status(400).json({ error: 'Неверный код!' });
+    }
+
+    session.verified = true;
+    res.json({ success: true });
+});
+
+// 3. Список кандидатов
 app.get('/api/candidates', (req, res) => {
-    db.all('SELECT id, name, class, photo_url, votes_count FROM candidates', [], (err, rows) => {
+    db.all('SELECT id, name FROM candidates', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-// Проверить статус голоса по номеру телефона
-app.post('/api/check-voter', (req, res) => {
-    const { phone } = req.body;
-    db.get('SELECT * FROM voters WHERE phone = ?', [phone], (err, row) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (row) {
-            return res.json({ registered: true, votedCandidateId: row.voted_candidate_id });
-        }
-        res.json({ registered: false });
-    });
-});
-
-// Голосование
+// 4. Запись голоса и анкеты
 app.post('/api/vote', (req, res) => {
-    const { phone, firstName, lastName, userClass, candidateId } = req.body;
+    const { sessionId, fullName, grade, candidateId } = req.body;
+    const session = sessions[sessionId];
 
-    if (!phone || !firstName || !lastName || !userClass || !candidateId) {
-        return res.status(400).json({ error: 'Заполните все поля' });
+    if (!session || !session.verified) {
+        return res.status(403).json({ error: 'Сначала подтвердите номер телефона.' });
     }
 
-    db.get('SELECT * FROM voters WHERE phone = ?', [phone], (err, voter) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (voter) {
-            return res.status(400).json({ error: 'Вы уже голосовали с этого номера!' });
-        }
+    db.get('SELECT id FROM voters WHERE phone = ?', [session.phone], (err, row) => {
+        if (row) return res.status(400).json({ error: 'Вы уже проголосовали!' });
 
-        db.run(
-            'INSERT INTO voters (phone, first_name, last_name, user_class, voted_candidate_id) VALUES (?, ?, ?, ?, ?)',
-            [phone, firstName, lastName, userClass, candidateId],
+        db.run('INSERT INTO voters (phone, fullName, grade, candidateId) VALUES (?, ?, ?, ?)',
+            [session.phone, fullName, grade, candidateId],
             function (err) {
                 if (err) return res.status(500).json({ error: err.message });
 
-                db.run('UPDATE candidates SET votes_count = votes_count + 1 WHERE id = ?', [candidateId]);
+                db.run('UPDATE candidates SET votes = votes + 1 WHERE id = ?', [candidateId]);
+                delete sessions[sessionId];
                 res.json({ success: true });
             }
         );
     });
 });
 
-// --- API: Для админки ---
-
-// Добавить кандидата
-app.post('/api/admin/add-candidate', (req, res) => {
-    const { adminPhone, name, candidateClass, photoUrl } = req.body;
-    if (adminPhone !== ADMIN_PHONE) return res.status(403).json({ error: 'Доступ запрещен' });
-
-    db.run(
-        'INSERT INTO candidates (name, class, photo_url) VALUES (?, ?, ?)',
-        [name, candidateClass, photoUrl || ''],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ success: true, id: this.lastID });
-        }
-    );
-});
-
-// Получить список всех проголосовавших
-app.post('/api/admin/voters', (req, res) => {
-    const { adminPhone } = req.body;
-    if (adminPhone !== ADMIN_PHONE) return res.status(403).json({ error: 'Доступ запрещен' });
-
-    const query = `
-        SELECT voters.id, voters.phone, voters.first_name, voters.last_name, voters.user_class, candidates.name as candidate_name 
-        FROM voters 
-        LEFT JOIN candidates ON voters.voted_candidate_id = candidates.id
-    `;
-
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
-});
-
-// Удалить фейковый голос
-app.post('/api/admin/delete-voter', (req, res) => {
-    const { adminPhone, voterId } = req.body;
-    if (adminPhone !== ADMIN_PHONE) return res.status(403).json({ error: 'Доступ запрещен' });
-
-    db.get('SELECT voted_candidate_id FROM voters WHERE id = ?', [voterId], (err, voter) => {
-        if (err || !voter) return res.status(404).json({ error: 'Голос не найден' });
-
-        db.run('UPDATE candidates SET votes_count = votes_count - 1 WHERE id = ?', [voter.voted_candidate_id], () => {
-            db.run('DELETE FROM voters WHERE id = ?', [voterId], (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ success: true });
-            });
-        });
-    });
-});
-
 app.listen(PORT, () => {
-    console.log(`Сервер запущен на http://localhost:${PORT}`);
+    console.log(`Сервер запущен на порту ${PORT}`);
 });
