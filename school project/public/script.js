@@ -270,6 +270,64 @@ async function deleteCandidate(id) {
     }
 }
 
+// Функции ручного управления баллами (+1 / -1)
+async function addVote(candidateId) {
+    try {
+        const res = await fetch('/api/admin/add-vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': currentAdminPassword
+            },
+            body: JSON.stringify({ candidateId })
+        });
+        if (!res.ok) throw new Error('Ошибка');
+        await loadAdminStats();
+    } catch (err) {
+        showMessage('Не удалось прибавить голос', true);
+    }
+}
+
+async function subVote(candidateId) {
+    try {
+        const res = await fetch('/api/admin/sub-vote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': currentAdminPassword
+            },
+            body: JSON.stringify({ candidateId })
+        });
+        if (!res.ok) throw new Error('Ошибка');
+        await loadAdminStats();
+    } catch (err) {
+        showMessage('Не удалось убавить голос', true);
+    }
+}
+
+// Функция сброса голоса ученика (дает шанс пройти заново)
+async function resetVoter(voterId) {
+    if (!confirm('Сбросить голос этого ученика? Он сможет проголосовать заново.')) return;
+
+    try {
+        const res = await fetch('/api/admin/reset-voter', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': currentAdminPassword
+            },
+            body: JSON.stringify({ voterId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Ошибка сброса');
+
+        showMessage('Голос ученика сброшен!');
+        await loadAdminStats();
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+}
+
 // Загрузка статистики голосов и таблицы учеников для админки
 async function loadAdminStats() {
     try {
@@ -284,7 +342,7 @@ async function loadAdminStats() {
         adminPanelSection.classList.remove('hidden');
         messageDiv.classList.add('hidden');
 
-        // Вывод кандидатов в списке управления админки
+        // Вывод кандидатов в списке управления админки (с кнопкой удаления)
         if (adminCandidatesList) {
             const candRes = await fetch('/api/candidates');
             const candidates = await candRes.json();
@@ -301,7 +359,7 @@ async function loadAdminStats() {
             });
         }
 
-        // Подсчет и вывод результатов голосования
+        // Подсчет, вывод результатов голосования и кнопок ручного управления баллами (+1 / -1)
         const statsDiv = document.getElementById('results-stats');
         statsDiv.innerHTML = '';
         if (!data.stats || data.stats.length === 0) {
@@ -309,17 +367,23 @@ async function loadAdminStats() {
         } else {
             data.stats.forEach(item => {
                 const div = document.createElement('div');
-                div.style.cssText = 'background:#222; padding:10px; border-radius:8px; margin-bottom:8px;';
-                div.innerHTML = `<strong>${item.name}</strong>: <span style="color:#00d2ff; font-size:18px; font-weight:bold;">${item.votes}</span> голосов`;
+                div.style.cssText = 'background:#222; padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;';
+                div.innerHTML = `
+                    <span><strong>${item.name}</strong> — <span style="color:#00d2ff; font-weight:bold; font-size:16px;">${item.votes}</span> гол.</span>
+                    <div>
+                        <button onclick="subVote(${item.id})" style="background:#ff4444; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; margin-right:4px;">-1</button>
+                        <button onclick="addVote(${item.id})" style="background:#00C851; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">+1</button>
+                    </div>
+                `;
                 statsDiv.appendChild(div);
             });
         }
 
-        // Таблица проголосовавших учеников
+        // Таблица проголосовавших учеников с кнопкой «Сбросить»
         const tableBody = document.getElementById('votes-table-body');
         tableBody.innerHTML = '';
         if (!data.voters || data.voters.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" style="padding:10px; text-align:center;">Пока никто не проголосовал.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="padding:10px; text-align:center;">Пока никто не проголосовал.</td></tr>';
         } else {
             data.voters.forEach(voter => {
                 const tr = document.createElement('tr');
@@ -328,6 +392,7 @@ async function loadAdminStats() {
                     <td>${voter.grade}</td>
                     <td>${voter.phone}</td>
                     <td style="color:#00d2ff;">${voter.candidateName}</td>
+                    <td><button onclick="resetVoter(${voter.id})" style="background:#ffbb33; color:#000; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; font-weight:bold;">Сбросить</button></td>
                 `;
                 tableBody.appendChild(tr);
             });
