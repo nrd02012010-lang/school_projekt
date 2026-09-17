@@ -22,8 +22,11 @@ const btnAdminClose = document.getElementById('btn-admin-close');
 const btnAdminRefresh = document.getElementById('btn-admin-refresh');
 const btnAdminExit = document.getElementById('btn-admin-exit');
 
-// Управление кандидатами
-const newCandidateInput = document.getElementById('new-candidate-name');
+// Поля добавления кандидата
+const newCandidateName = document.getElementById('new-candidate-name');
+const newCandidateGrade = document.getElementById('new-candidate-grade');
+const newCandidatePhoto = document.getElementById('new-candidate-photo');
+const newCandidateDescription = document.getElementById('new-candidate-description');
 const btnAddCandidate = document.getElementById('btn-add-candidate');
 const adminCandidatesList = document.getElementById('admin-candidates-list');
 
@@ -86,7 +89,7 @@ btnVerify.addEventListener('click', async () => {
     }
 });
 
-// 3. Загрузка кандидатов для голосования
+// 3. Загрузка кандидатов для голосования учеников
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
@@ -96,10 +99,23 @@ async function loadCandidates() {
         candidates.forEach(c => {
             const div = document.createElement('div');
             div.className = 'candidate-option';
-            div.textContent = c.name;
+            div.style.cssText = 'display:flex; gap:15px; align-items:center; text-align:left; padding:12px; margin-bottom:10px; cursor:pointer; border:1px solid #444; border-radius:8px;';
+            
+            const photoHtml = c.photoUrl ? `<img src="${c.photoUrl}" style="width:60px; height:60px; object-fit:cover; border-radius:50%; flex-shrink:0;">` : '';
+            const gradeHtml = c.grade ? `<span style="color:#00d2ff; font-size:14px;"> (${c.grade})</span>` : '';
+            const descHtml = c.description ? `<p style="font-size:12px; color:#aaa; margin:4px 0 0 0;">${c.description}</p>` : '';
+
+            div.innerHTML = `
+                ${photoHtml}
+                <div>
+                    <strong>${c.name}</strong>${gradeHtml}
+                    ${descHtml}
+                </div>
+            `;
+
             div.onclick = () => {
-                document.querySelectorAll('.candidate-option').forEach(el => el.classList.remove('selected'));
-                div.classList.add('selected');
+                document.querySelectorAll('.candidate-option').forEach(el => el.style.borderColor = '#444');
+                div.style.borderColor = '#00d2ff';
                 selectedCandidateId = c.id;
             };
             candidatesList.appendChild(div);
@@ -140,7 +156,7 @@ btnSubmitVote.addEventListener('click', async () => {
     }
 });
 
-// === ЛОГИКА КНОПКИ-ШЕСТЕРЕНКИ (АДМИНКА) ===
+// === ЛОГИКА АДМИНКИ ===
 
 btnGear.addEventListener('click', () => {
     authSection.classList.add('hidden');
@@ -171,11 +187,15 @@ btnAdminExit.addEventListener('click', () => {
     currentAdminPassword = '';
 });
 
-// Добавление нового кандидата админом
+// Добавление нового кандидата с доп. инфой
 if (btnAddCandidate) {
     btnAddCandidate.addEventListener('click', async () => {
-        const name = newCandidateInput.value.trim();
-        if (!name) return showMessage('Введите имя кандидата!', true);
+        const name = newCandidateName.value.trim();
+        const grade = newCandidateGrade.value.trim();
+        const photoUrl = newCandidatePhoto.value.trim();
+        const description = newCandidateDescription.value.trim();
+
+        if (!name) return showMessage('Введите ФИО кандидата!', true);
 
         try {
             const res = await fetch('/api/admin/add-candidate', {
@@ -184,13 +204,18 @@ if (btnAddCandidate) {
                     'Content-Type': 'application/json',
                     'x-admin-password': currentAdminPassword
                 },
-                body: JSON.stringify({ name })
+                body: JSON.stringify({ name, grade, photoUrl, description })
             });
             const data = await res.json();
 
             if (!res.ok) throw new Error(data.error);
 
-            newCandidateInput.value = '';
+            // Очищаем поля ввода
+            newCandidateName.value = '';
+            newCandidateGrade.value = '';
+            newCandidatePhoto.value = '';
+            newCandidateDescription.value = '';
+
             showMessage('Кандидат успешно добавлен!');
             await loadAdminStats();
         } catch (err) {
@@ -223,7 +248,7 @@ async function deleteCandidate(id) {
     }
 }
 
-// Загрузка статистики, результатов и управления кандидатами
+// Загрузка данных админки
 async function loadAdminStats() {
     try {
         const res = await fetch('/api/admin/stats', {
@@ -237,7 +262,7 @@ async function loadAdminStats() {
         adminPanelSection.classList.remove('hidden');
         messageDiv.classList.add('hidden');
 
-        // 1. Загрузка кандидатов для панели управления (добавление/удаление)
+        // Список кандидатов в панели админа
         if (adminCandidatesList) {
             const candRes = await fetch('/api/candidates');
             const candidates = await candRes.json();
@@ -245,16 +270,16 @@ async function loadAdminStats() {
             adminCandidatesList.innerHTML = '';
             candidates.forEach(c => {
                 const div = document.createElement('div');
-                div.style.cssText = 'display:flex; justify-space-between; align-items:center; background:#222; padding:8px 12px; margin-bottom:5px; border-radius:5px;';
+                div.style.cssText = 'display:flex; justify-content:space-between; align-items:center; background:#222; padding:8px 12px; margin-bottom:5px; border-radius:5px;';
                 div.innerHTML = `
-                    <span>${c.name}</span>
+                    <span><strong>${c.name}</strong> ${c.grade ? `(${c.grade})` : ''}</span>
                     <button onclick="deleteCandidate(${c.id})" style="background:#ff4444; color:#fff; border:none; padding:4px 8px; border-radius:3px; cursor:pointer;">Удалить</button>
                 `;
                 adminCandidatesList.appendChild(div);
             });
         }
 
-        // 2. Статистика голосов
+        // Результаты голосов
         const statsDiv = document.getElementById('results-stats');
         statsDiv.innerHTML = '';
         if (!data.stats || data.stats.length === 0) {
@@ -264,12 +289,12 @@ async function loadAdminStats() {
                 const div = document.createElement('div');
                 div.className = 'candidate-option';
                 div.style.cursor = 'default';
-                div.innerHTML = `<strong>${item.name}</strong>: <span style="color:#00ff66; font-size:18px;">${item.votes}</span> голосов`;
+                div.innerHTML = `<strong>${item.name}</strong>: <span style="color:#00d2ff; font-size:18px; font-weight:bold;">${item.votes}</span> голосов`;
                 statsDiv.appendChild(div);
             });
         }
 
-        // 3. Таблица с голосами учеников
+        // Таблица проголосовавших
         const tableBody = document.getElementById('votes-table-body');
         tableBody.innerHTML = '';
         if (!data.voters || data.voters.length === 0) {
@@ -281,7 +306,7 @@ async function loadAdminStats() {
                     <td>${voter.fullName}</td>
                     <td>${voter.grade}</td>
                     <td>${voter.phone}</td>
-                    <td style="color:#00ff66;">${voter.candidateName}</td>
+                    <td style="color:#00d2ff;">${voter.candidateName}</td>
                 `;
                 tableBody.appendChild(tr);
             });
