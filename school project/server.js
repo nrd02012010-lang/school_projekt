@@ -7,7 +7,7 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
 // Твой токен и бот прописаны напрямую
 const BOT_USERNAME = 'school_voting_bot'; // Если у твоего бота другое username начни с него (без собаки)
