@@ -5,40 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выборы Президента Школы</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Кнопка Шестеренка */
+        .admin-gear {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: 0.2s;
+        }
+        .admin-gear:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: rotate(45deg);
+        }
+        /* Стили таблицы админки */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; text-align: left; }
+        th, td { padding: 8px; border-bottom: 1px solid #444; font-size: 14px; }
+        th { color: #888; }
+    </style>
 </head>
 <body>
+
+    <!-- Иконка шестеренки -->
+    <div id="btn-gear" class="admin-gear" title="Панель администратора">⚙️</div>
+
     <div class="container">
-        <h1>Выборы Президента Школы</h1>
+        <h1>ВЫБОРЫ ПРЕЗИДЕНТА ШКОЛЫ</h1>
 
-        <!-- ЭКРАН 1: Авторизация по номеру и TG -->
-        <div id="auth-screen" class="card">
-            <h2>Авторизация</h2>
-            <div class="form-group">
-                <input type="tel" id="phone" placeholder="Номер телефона (87XXXXXXXXX)">
-                <button id="btn-get-code">Получить код</button>
-            </div>
+        <div id="message" class="message hidden"></div>
 
-            <div id="telegram-block" class="form-group hidden">
-                <a id="bot-link" href="#" target="_blank" class="tg-btn">Перейти в ТГ бота</a>
-                <input type="text" id="telegramCode" placeholder="Код из бота" maxlength="4">
-                <button id="btn-verify-code">Проверить</button>
-            </div>
+        <!-- 1. АВТОРИЗАЦИЯ УЧЕНИКА -->
+        <div id="auth-section" class="card">
+            <h2>АВТОРИЗАЦИЯ</h2>
+            <input type="tel" id="phone" placeholder="+7 (700) 000-00-00">
+            <button id="btn-get-code" class="btn">Получить код</button>
+            
+            <a id="btn-bot-link" href="#" target="_blank" class="btn btn-telegram hidden" style="display:block; text-align:center; text-decoration:none; margin: 10px 0;">Открыть Telegram-бота</a>
+
+            <input type="text" id="code" placeholder="Код из бота">
+            <button id="btn-verify" class="btn">Проверить</button>
         </div>
 
-        <!-- ЭКРАН 2: Анкетные данные + Голосование -->
-        <div id="vote-screen" class="card hidden">
-            <h2>Заполнение данных и выбор</h2>
-            <input type="text" id="firstName" placeholder="Имя">
-            <input type="text" id="lastName" placeholder="Фамилия">
+        <!-- 2. ГОЛОСОВАНИЕ -->
+        <div id="vote-section" class="card hidden">
+            <h2>АНКЕТА И ГОЛОСОВАНИЕ</h2>
+            <input type="text" id="fullName" placeholder="ФИО (например, Иванов Иван)">
             <input type="text" id="grade" placeholder="Класс (например, 10-А)">
             
             <h3>Выберите кандидата:</h3>
             <div id="candidates-list"></div>
 
-            <button id="btn-vote" class="vote-btn">Проголосовать</button>
+            <button id="btn-submit-vote" class="btn">Отправить голос</button>
         </div>
 
-        <div id="message" class="message hidden"></div>
+        <!-- 3. Окно входа в админку (Телефон + Пароль) -->
+        <div id="admin-login-section" class="card hidden">
+            <h2>ВХОД ДЛЯ АДМИНА ⚙️</h2>
+            <input type="tel" id="admin-phone" placeholder="Ваш номер телефона">
+            <input type="password" id="admin-password" placeholder="Пароль администратора">
+            <button id="btn-admin-login" class="btn">Войти</button>
+            <button id="btn-admin-close" class="btn" style="background:#555; margin-top:5px;">Отмена</button>
+        </div>
+
+        <!-- 4. ПАНЕЛЬ АДМИНА (Результаты) -->
+        <div id="admin-panel-section" class="card hidden">
+            <h2>ПАНЕЛЬ АДМИНИСТРАТОРА</h2>
+            <button id="btn-admin-refresh" class="btn" style="margin-bottom: 15px;">Обновить данные</button>
+            
+            <div id="results-stats"></div>
+
+            <h3 style="margin-top: 20px;">Проголосовавшие ученики:</h3>
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ФИО</th>
+                            <th>Класс</th>
+                            <th>Телефон</th>
+                            <th>Кандидат</th>
+                        </tr>
+                    </thead>
+                    <tbody id="votes-table-body"></tbody>
+                </table>
+            </div>
+            <button id="btn-admin-exit" class="btn" style="background:#555; margin-top:15px;">Выйти</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
