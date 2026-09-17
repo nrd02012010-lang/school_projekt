@@ -1,5 +1,6 @@
 let currentSessionId = null;
 
+// Элементы авторизации и голосования
 const phoneInput = document.getElementById('phone');
 const btnGetCode = document.getElementById('btn-get-code');
 const btnBotLink = document.getElementById('btn-bot-link');
@@ -11,7 +12,7 @@ const candidatesList = document.getElementById('candidates-list');
 const btnSubmitVote = document.getElementById('btn-submit-vote');
 const messageDiv = document.getElementById('message');
 
-// Админка
+// Элементы шестеренки и админки
 const btnGear = document.getElementById('btn-gear');
 const adminLoginSection = document.getElementById('admin-login-section');
 const adminPanelSection = document.getElementById('admin-panel-section');
@@ -33,13 +34,14 @@ const adminCandidatesList = document.getElementById('admin-candidates-list');
 let selectedCandidateId = null;
 let currentAdminPassword = '';
 
+// Вспомогательная функция вывода уведомлений
 function showMessage(text, isError = false) {
     messageDiv.textContent = text;
     messageDiv.className = `message ${isError ? 'error' : 'success'}`;
     messageDiv.classList.remove('hidden');
 }
 
-// 1. Запрос кода
+// 1. Запрос кода (Получение ссылки на бота)
 btnGetCode.addEventListener('click', async () => {
     const phone = phoneInput.value.trim();
     if (!phone) return showMessage('Введите номер телефона!', true);
@@ -52,7 +54,7 @@ btnGetCode.addEventListener('click', async () => {
         });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Ошибка запроса кода');
 
         currentSessionId = data.sessionId;
         btnBotLink.href = data.botLink;
@@ -64,7 +66,7 @@ btnGetCode.addEventListener('click', async () => {
     }
 });
 
-// 2. Проверка кода из бота
+// 2. Проверка 4-значного кода из Telegram
 btnVerify.addEventListener('click', async () => {
     const code = codeInput.value.trim();
     if (!code || !currentSessionId) return showMessage('Сначала получите код!', true);
@@ -77,7 +79,7 @@ btnVerify.addEventListener('click', async () => {
         });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Неверный код!');
 
         authSection.classList.add('hidden');
         voteSection.classList.remove('hidden');
@@ -88,14 +90,14 @@ btnVerify.addEventListener('click', async () => {
     }
 });
 
-// 3. Загрузка кандидатов в виде вертикальной ленты карточек
+// 3. Загрузка кандидатов в виде интерактивной ленты карточек
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
         const candidates = await res.json();
 
         candidatesList.innerHTML = '';
-        if (candidates.length === 0) {
+        if (!candidates || candidates.length === 0) {
             candidatesList.innerHTML = '<p style="color:#aaa;">Список кандидатов пока пуст.</p>';
             return;
         }
@@ -129,7 +131,7 @@ async function loadCandidates() {
     }
 }
 
-// 4. Отправка голоса
+// 4. Отправка голоса ученика
 btnSubmitVote.addEventListener('click', async () => {
     const fullName = document.getElementById('fullName').value.trim();
     const grade = document.getElementById('grade').value.trim();
@@ -154,7 +156,7 @@ btnSubmitVote.addEventListener('click', async () => {
         });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Ошибка при отправке голоса');
 
         voteSection.classList.add('hidden');
         showMessage('Спасибо! Ваш голос успешно учтен.');
@@ -163,19 +165,22 @@ btnSubmitVote.addEventListener('click', async () => {
     }
 });
 
-// === ЛОГИКА АДМИНКИ ===
+// === ЛОГИКА АДМИН-ПАНЕЛИ ===
 
+// Переключение на окно входа в админку по клику на шестеренку
 btnGear.addEventListener('click', () => {
     authSection.classList.add('hidden');
     voteSection.classList.add('hidden');
     adminLoginSection.classList.remove('hidden');
 });
 
+// Закрытие окна админки
 btnAdminClose.addEventListener('click', () => {
     adminLoginSection.classList.add('hidden');
     authSection.classList.remove('hidden');
 });
 
+// Вход в панель админа
 btnAdminLogin.addEventListener('click', async () => {
     const phone = adminPhoneInput.value.trim();
     currentAdminPassword = adminPasswordInput.value.trim();
@@ -186,15 +191,17 @@ btnAdminLogin.addEventListener('click', async () => {
     await loadAdminStats();
 });
 
+// Кнопка обновления статистики
 btnAdminRefresh.addEventListener('click', loadAdminStats);
 
+// Выход из панели админа
 btnAdminExit.addEventListener('click', () => {
     adminPanelSection.classList.add('hidden');
     authSection.classList.remove('hidden');
     currentAdminPassword = '';
 });
 
-// Добавление кандидата с загрузкой фото с ПК/Телефона
+// Добавление нового кандидата с отправкой фото через FormData
 if (btnAddCandidate) {
     btnAddCandidate.addEventListener('click', async () => {
         const name = newCandidateName.value.trim();
@@ -222,9 +229,9 @@ if (btnAddCandidate) {
             });
             const data = await res.json();
 
-            if (!res.ok) throw new Error(data.error);
+            if (!res.ok) throw new Error(data.error || 'Ошибка добавления кандидата');
 
-            // Очищаем форму
+            // Очищаем поля формы
             newCandidateName.value = '';
             newCandidateGrade.value = '';
             newCandidateDescription.value = '';
@@ -238,7 +245,7 @@ if (btnAddCandidate) {
     });
 }
 
-// Удаление кандидата
+// Удаление кандидата админом
 async function deleteCandidate(id) {
     if (!confirm('Удалить этого кандидата?')) return;
 
@@ -253,7 +260,7 @@ async function deleteCandidate(id) {
         });
         const data = await res.json();
 
-        if (!res.ok) throw new Error(data.error);
+        if (!res.ok) throw new Error(data.error || 'Ошибка удаления кандидата');
 
         showMessage('Кандидат удален');
         await loadAdminStats();
@@ -262,7 +269,7 @@ async function deleteCandidate(id) {
     }
 }
 
-// Загрузка статистики для админа
+// Загрузка статистики голосов и таблицы учеников для админки
 async function loadAdminStats() {
     try {
         const res = await fetch('/api/admin/stats', {
@@ -276,7 +283,7 @@ async function loadAdminStats() {
         adminPanelSection.classList.remove('hidden');
         messageDiv.classList.add('hidden');
 
-        // Список кандидатов для админа
+        // Вывод кандидатов в списке управления админки
         if (adminCandidatesList) {
             const candRes = await fetch('/api/candidates');
             const candidates = await candRes.json();
@@ -293,7 +300,7 @@ async function loadAdminStats() {
             });
         }
 
-        // Результаты голосования
+        // Подсчет и вывод результатов голосования
         const statsDiv = document.getElementById('results-stats');
         statsDiv.innerHTML = '';
         if (!data.stats || data.stats.length === 0) {
@@ -307,11 +314,11 @@ async function loadAdminStats() {
             });
         }
 
-        // Таблица проголосовавших
+        // Таблица проголосовавших учеников
         const tableBody = document.getElementById('votes-table-body');
         tableBody.innerHTML = '';
         if (!data.voters || data.voters.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4">Пока никто не проголосовал.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="4" style="padding:10px; text-align:center;">Пока никто не проголосовал.</td></tr>';
         } else {
             data.voters.forEach(voter => {
                 const tr = document.createElement('tr');
