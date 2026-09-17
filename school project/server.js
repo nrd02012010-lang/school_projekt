@@ -1,6 +1,6 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
-const TelegramBot = require('school_electionsbot');
+const TelegramBot = require('node-telegram-bot-api');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
 // Твой токен и бот прописаны напрямую
-const BOT_USERNAME = 'school_voting_bot'; // Если у твоего бота другое username начни с него (без собаки)
+const BOT_USERNAME = 'school_voting_bot'; // Если у твоего бота другое username, измени здесь (без собаки)
 const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
