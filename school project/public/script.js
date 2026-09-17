@@ -1,10 +1,10 @@
 let currentSessionId = null;
 
-const step1 = document.getElementById('step-1');
-const step2 = document.getElementById('step-2');
-const step3 = document.getElementById('step-3');
+const authScreen = document.getElementById('auth-screen');
+const telegramBlock = document.getElementById('telegram-block');
+const voteScreen = document.getElementById('vote-screen');
 
-const btnRequestCode = document.getElementById('btn-request-code');
+const btnGetCode = document.getElementById('btn-get-code');
 const btnVerifyCode = document.getElementById('btn-verify-code');
 const btnVote = document.getElementById('btn-vote');
 const messageDiv = document.getElementById('message');
@@ -15,16 +15,10 @@ function showMessage(text, isError = false) {
     messageDiv.classList.remove('hidden');
 }
 
-// 1. Отправка данных регистрации и запрос ссылки в Telegram
-btnRequestCode.addEventListener('click', async () => {
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
-    const grade = document.getElementById('grade').value.trim();
+// 1. Ввод телефона -> получаем ссылку
+btnGetCode.addEventListener('click', async () => {
     const phone = document.getElementById('phone').value.trim();
-
-    if (!firstName || !lastName || !grade || !phone) {
-        return showMessage('Заполните все поля!', true);
-    }
+    if (!phone) return showMessage('Введите номер телефона!', true);
 
     try {
         const res = await fetch('/api/request-code', {
@@ -38,19 +32,16 @@ btnRequestCode.addEventListener('click', async () => {
 
         currentSessionId = data.sessionId;
         document.getElementById('bot-link').href = data.botLink;
-
-        step1.classList.add('hidden');
-        step2.classList.remove('hidden');
-        showMessage('Перейдите в бота и получите код');
+        telegramBlock.classList.remove('hidden');
+        showMessage('Перейдите в ТГ бота и получите код');
     } catch (err) {
         showMessage(err.message, true);
     }
 });
 
-// 2. Проверка кода
+// 2. Ввод кода -> проверка и переход к анкете
 btnVerifyCode.addEventListener('click', async () => {
     const code = document.getElementById('telegramCode').value.trim();
-
     if (!code) return showMessage('Введите код из бота!', true);
 
     try {
@@ -63,9 +54,9 @@ btnVerifyCode.addEventListener('click', async () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        step2.classList.add('hidden');
-        step3.classList.remove('hidden');
-        showMessage('Код подтвержден! Выберите кандидата.');
+        authScreen.classList.add('hidden');
+        voteScreen.classList.remove('hidden');
+        showMessage('Код подтвержден. Заполните данные!');
 
         loadCandidates();
     } catch (err) {
@@ -73,7 +64,7 @@ btnVerifyCode.addEventListener('click', async () => {
     }
 });
 
-// Загрузка списка кандидатов
+// Загрузка кандидатов
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
@@ -96,15 +87,15 @@ async function loadCandidates() {
     }
 }
 
-// 3. Финальное голосование
+// 3. Финальная отправка голоса
 btnVote.addEventListener('click', async () => {
-    const selected = document.querySelector('input[name="candidate"]:checked');
-    if (!selected) return showMessage('Выберите кандидата!', true);
-
     const firstName = document.getElementById('firstName').value.trim();
     const lastName = document.getElementById('lastName').value.trim();
     const grade = document.getElementById('grade').value.trim();
-    const fullName = `${firstName} ${lastName}`;
+    const selected = document.querySelector('input[name="candidate"]:checked');
+
+    if (!firstName || !lastName || !grade) return showMessage('Заполните Имя, Фамилию и Класс!', true);
+    if (!selected) return showMessage('Выберите кандидата!', true);
 
     try {
         const res = await fetch('/api/vote', {
@@ -112,7 +103,7 @@ btnVote.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 sessionId: currentSessionId,
-                fullName,
+                fullName: `${firstName} ${lastName}`,
                 grade,
                 candidateId: selected.value
             })
@@ -121,7 +112,7 @@ btnVote.addEventListener('click', async () => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        step3.classList.add('hidden');
+        voteScreen.classList.add('hidden');
         showMessage('Ваш голос успешно принят! Спасибо за участие.');
     } catch (err) {
         showMessage(err.message, true);
