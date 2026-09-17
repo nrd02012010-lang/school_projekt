@@ -4,33 +4,40 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Выборы Президента Школы</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; }
-        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
-        input, button { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .candidate-option { border: 2px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; cursor: pointer; }
-        .candidate-option.selected { border-color: #007bff; background-color: #e7f1ff; }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>Выборы Президента Школы</h2>
+    <div class="container">
+        <h1>Выборы Президента Школы</h1>
 
-    <div class="card">
-        <h3>1. Введите свои данные</h3>
-        <input type="text" id="firstName" placeholder="Имя">
-        <input type="text" id="lastName" placeholder="Фамилия">
-        <input type="text" id="userClass" placeholder="Класс (например, 10-А)">
-        <input type="tel" id="phone" placeholder="Номер телефона">
+        <!-- ШАГ 1: Ввод данных -->
+        <div id="step-1" class="step-card">
+            <h2>1. Регистрация</h2>
+            <input type="text" id="firstName" placeholder="Имя" required>
+            <input type="text" id="lastName" placeholder="Фамилия" required>
+            <input type="text" id="grade" placeholder="Класс (например, 10-А)" required>
+            <input type="tel" id="phone" placeholder="Номер телефона (87XXXXXXXXX)" required>
+            <button id="btn-request-code">Получить код в Telegram</button>
+        </div>
+
+        <!-- ШАГ 2: Подтверждение кода -->
+        <div id="step-2" class="step-card hidden">
+            <h2>2. Подтверждение через Telegram</h2>
+            <p>Нажмите на кнопку ниже, запустите бота и скопируйте код:</p>
+            <a id="bot-link" href="#" target="_blank" class="bot-btn">Открыть Telegram-бота 🚀</a>
+            <input type="text" id="telegramCode" placeholder="Введите 4-значный код" maxlength="4">
+            <button id="btn-verify-code">Подтвердить код</button>
+        </div>
+
+        <!-- ШАГ 3: Голосование -->
+        <div id="step-3" class="step-card hidden">
+            <h2>3. Выберите кандидата</h2>
+            <div id="candidates-list"></div>
+            <button id="btn-vote">Проголосовать</button>
+        </div>
+
+        <div id="message" class="message hidden"></div>
     </div>
-
-    <div class="card">
-        <h3>2. Выберите кандидата</h3>
-        <div id="candidates-list"></div>
-        <button id="vote-btn" onclick="submitVote()">Проголосовать</button>
-    </div>
-
-    <div id="message" style="margin-top: 15px; font-weight: bold; color: green;"></div>
 
     <script src="script.js"></script>
 </body>
