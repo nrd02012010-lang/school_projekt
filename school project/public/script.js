@@ -59,6 +59,7 @@ btnGetCode.addEventListener('click', async () => {
         currentSessionId = data.sessionId;
         btnBotLink.href = data.botLink;
         btnBotLink.classList.remove('hidden');
+        btnBotLink.style.display = 'block'; // Принудительно показываем кнопку
 
         showMessage('Нажмите синюю кнопку ниже, чтобы перейти в бота!');
     } catch (err) {
