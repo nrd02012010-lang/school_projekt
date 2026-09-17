@@ -1,121 +1,116 @@
-* {
-    box-sizing: border-box;
-    font-family: 'Courier New', Courier, monospace;
-}
-
 body {
     background-color: #121212;
-    color: #00ff66;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
-
-.container {
-    width: 100%;
-    max-width: 480px;
     padding: 20px;
-}
-
-h1, h2, h3 {
-    text-align: center;
-    color: #ffffff;
-    text-transform: uppercase;
-    letter-spacing: 1px;
 }
 
 .card {
     background-color: #1e1e1e;
-    border: 1px solid #333;
     border-radius: 8px;
-    padding: 20px;
+    padding: 25px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+/* Красная плашка ошибки */
+.error-banner {
+    background-color: #721c24;
+    color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 12px;
+    text-align: center;
+    font-weight: bold;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: none; /* Скрыта по умолчанию */
+}
+
+h2, h3 {
+    text-align: center;
+    letter-spacing: 1px;
+    margin-top: 20px;
     margin-bottom: 15px;
 }
 
 .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-top: 15px;
+    margin-bottom: 15px;
 }
 
-input {
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+input[type="text"], textarea {
+    width: 100%;
+    padding: 10px;
     background-color: #2a2a2a;
     border: 1px solid #444;
-    color: #fff;
-    padding: 12px;
-    font-size: 16px;
     border-radius: 4px;
-    outline: none;
-    width: 100%;
-    margin-bottom: 10px;
+    color: #fff;
+    box-sizing: border-box;
+    font-size: 14px;
 }
 
-input:focus {
-    border-color: #00ff66;
+textarea {
+    height: 80px;
+    resize: vertical;
 }
 
-button, .tg-btn {
-    background-color: #00ff66;
-    color: #000;
+input[type="file"] {
+    color: #ccc;
+}
+
+/* Голубые кнопки */
+.btn-blue {
+    background-color: #00bfff;
+    color: #000000;
     border: none;
     padding: 12px;
-    font-size: 16px;
+    width: 100%;
     font-weight: bold;
-    cursor: pointer;
-    border-radius: 4px;
-    text-align: center;
-    text-decoration: none;
-    display: block;
-}
-
-button:hover, .tg-btn:hover {
-    background-color: #00cc52;
-}
-
-.tg-btn {
-    background-color: #0088cc;
-    color: #fff;
-}
-
-.tg-btn:hover {
-    background-color: #006699;
-}
-
-.candidate-option {
-    display: block;
-    background: #2a2a2a;
-    padding: 12px;
-    margin-bottom: 8px;
+    font-size: 15px;
     border-radius: 4px;
     cursor: pointer;
-    color: #fff;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
 }
 
-.candidate-option input {
-    width: auto;
-    margin-right: 10px;
+.btn-blue:hover {
+    background-color: #0099cc;
 }
 
-.hidden {
-    display: none !important;
-}
-
-.message {
-    padding: 10px;
-    text-align: center;
-    border-radius: 4px;
+/* Голубой текст */
+.info-text {
+    color: #00bfff;
+    font-weight: bold;
     margin-top: 10px;
 }
 
-.message.error {
-    background-color: #550000;
-    color: #ff6666;
+hr {
+    border: 0;
+    height: 1px;
+    background: #333;
+    margin: 20px 0;
 }
 
-.message.success {
-    background-color: #004400;
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th {
+    text-align: left;
+    color: #aaa;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
     color: #66ff66;
 }
