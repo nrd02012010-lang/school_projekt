@@ -1,37 +1,129 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Выборы Президента Школы</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; }
-        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
-        input, button { width: 100%; padding: 10px; margin-top: 8px; box-sizing: border-box; }
-        button { background-color: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .candidate-option { border: 2px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 5px; cursor: pointer; }
-        .candidate-option.selected { border-color: #007bff; background-color: #e7f1ff; }
-    </style>
-</head>
-<body>
-    <h2>Выборы Президента Школы</h2>
+let currentSessionId = null;
 
-    <div class="card">
-        <h3>1. Введите свои данные</h3>
-        <input type="text" id="firstName" placeholder="Имя">
-        <input type="text" id="lastName" placeholder="Фамилия">
-        <input type="text" id="userClass" placeholder="Класс (например, 10-А)">
-        <input type="tel" id="phone" placeholder="Номер телефона">
-    </div>
+const step1 = document.getElementById('step-1');
+const step2 = document.getElementById('step-2');
+const step3 = document.getElementById('step-3');
 
-    <div class="card">
-        <h3>2. Выберите кандидата</h3>
-        <div id="candidates-list"></div>
-        <button id="vote-btn" onclick="submitVote()">Проголосовать</button>
-    </div>
+const btnRequestCode = document.getElementById('btn-request-code');
+const btnVerifyCode = document.getElementById('btn-verify-code');
+const btnVote = document.getElementById('btn-vote');
+const messageDiv = document.getElementById('message');
 
-    <div id="message" style="margin-top: 15px; font-weight: bold; color: green;"></div>
+function showMessage(text, isError = false) {
+    messageDiv.textContent = text;
+    messageDiv.className = `message ${isError ? 'error' : 'success'}`;
+    messageDiv.classList.remove('hidden');
+}
 
-    <script src="script.js"></script>
-</body>
-</html>
+// 1. Отправка данных регистрации и запрос ссылки в Telegram
+btnRequestCode.addEventListener('click', async () => {
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const grade = document.getElementById('grade').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+
+    if (!firstName || !lastName || !grade || !phone) {
+        return showMessage('Заполните все поля!', true);
+    }
+
+    try {
+        const res = await fetch('/api/request-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        currentSessionId = data.sessionId;
+        document.getElementById('bot-link').href = data.botLink;
+
+        step1.classList.add('hidden');
+        step2.classList.remove('hidden');
+        showMessage('Перейдите в бота и получите код');
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+});
+
+// 2. Проверка кода
+btnVerifyCode.addEventListener('click', async () => {
+    const code = document.getElementById('telegramCode').value.trim();
+
+    if (!code) return showMessage('Введите код из бота!', true);
+
+    try {
+        const res = await fetch('/api/verify-code', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: currentSessionId, code })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        step2.classList.add('hidden');
+        step3.classList.remove('hidden');
+        showMessage('Код подтвержден! Выберите кандидата.');
+
+        loadCandidates();
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+});
+
+// Загрузка списка кандидатов
+async function loadCandidates() {
+    try {
+        const res = await fetch('/api/candidates');
+        const candidates = await res.json();
+
+        const listDiv = document.getElementById('candidates-list');
+        listDiv.innerHTML = '';
+
+        candidates.forEach(c => {
+            const label = document.createElement('label');
+            label.className = 'candidate-option';
+            label.innerHTML = `
+                <input type="radio" name="candidate" value="${c.id}">
+                <span>${c.name}</span>
+            `;
+            listDiv.appendChild(label);
+        });
+    } catch (err) {
+        showMessage('Ошибка загрузки кандидатов', true);
+    }
+}
+
+// 3. Финальное голосование
+btnVote.addEventListener('click', async () => {
+    const selected = document.querySelector('input[name="candidate"]:checked');
+    if (!selected) return showMessage('Выберите кандидата!', true);
+
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const grade = document.getElementById('grade').value.trim();
+    const fullName = `${firstName} ${lastName}`;
+
+    try {
+        const res = await fetch('/api/vote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                sessionId: currentSessionId,
+                fullName,
+                grade,
+                candidateId: selected.value
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        step3.classList.add('hidden');
+        showMessage('Ваш голос успешно принят! Спасибо за участие.');
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+});
