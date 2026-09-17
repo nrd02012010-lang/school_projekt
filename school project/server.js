@@ -8,13 +8,15 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const BOT_USERNAME = process.env.BOT_USERNAME || 'your_bot';
-const BOT_TOKEN = process.env.BOT_TOKEN;
+
+// Твой токен и бот прописаны напрямую
+const BOT_USERNAME = 'school_voting_bot'; // Если у твоего бота другое username начни с него (без собаки)
+const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const db = new sqlite3.Database('./database.db');
 
-// Настройка хранилища для загружаемых фото
+// Хранилище для загружаемых фото кандидатов
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const dir = './uploads';
@@ -31,7 +33,7 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-// Создание таблиц при запуске
+// Создание таблиц БД
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS candidates (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -79,7 +81,7 @@ app.post('/api/request-code', (req, res) => {
     });
 });
 
-// Обработка клика в Telegram (/start)
+// Обработка /start в Telegram
 bot.onText(/\/start (.+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const sessionId = match[1];
@@ -111,7 +113,7 @@ app.post('/api/verify-code', (req, res) => {
     res.json({ success: true });
 });
 
-// 3. Список кандидатов (с новыми полями)
+// 3. Получение списка кандидатов
 app.get('/api/candidates', (req, res) => {
     db.all('SELECT id, name, grade, description, photoUrl FROM candidates', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -119,7 +121,7 @@ app.get('/api/candidates', (req, res) => {
     });
 });
 
-// 4. Запись голоса и анкеты
+// 4. Отправка голоса
 app.post('/api/vote', (req, res) => {
     const { sessionId, fullName, grade, candidateId } = req.body;
     const session = sessions[sessionId];
@@ -146,6 +148,7 @@ app.post('/api/vote', (req, res) => {
 
 // === 5. АДМИНКА ===
 
+// Статистика
 app.get('/api/admin/stats', (req, res) => {
     const clientPassword = req.headers['x-admin-password'];
 
@@ -177,7 +180,7 @@ app.get('/api/admin/stats', (req, res) => {
     });
 });
 
-// Добавить кандидата (с обработкой файла Multer)
+// Добавление кандидата
 app.post('/api/admin/add-candidate', upload.single('photo'), (req, res) => {
     const clientPassword = req.headers['x-admin-password'];
     if (clientPassword !== ADMIN_PASSWORD) {
@@ -201,7 +204,7 @@ app.post('/api/admin/add-candidate', upload.single('photo'), (req, res) => {
     );
 });
 
-// Удалить кандидата
+// Удаление кандидата
 app.post('/api/admin/delete-candidate', (req, res) => {
     const clientPassword = req.headers['x-admin-password'];
     if (clientPassword !== ADMIN_PASSWORD) {
