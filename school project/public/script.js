@@ -22,6 +22,11 @@ const btnAdminClose = document.getElementById('btn-admin-close');
 const btnAdminRefresh = document.getElementById('btn-admin-refresh');
 const btnAdminExit = document.getElementById('btn-admin-exit');
 
+// Управление кандидатами
+const newCandidateInput = document.getElementById('new-candidate-name');
+const btnAddCandidate = document.getElementById('btn-add-candidate');
+const adminCandidatesList = document.getElementById('admin-candidates-list');
+
 let selectedCandidateId = null;
 let currentAdminPassword = '';
 
@@ -48,7 +53,6 @@ btnGetCode.addEventListener('click', async () => {
 
         currentSessionId = data.sessionId;
         
-        // Настраиваем ссылку на бота
         btnBotLink.href = data.botLink;
         btnBotLink.classList.remove('hidden');
 
@@ -82,7 +86,7 @@ btnVerify.addEventListener('click', async () => {
     }
 });
 
-// 3. Загрузка кандидатов
+// 3. Загрузка кандидатов для голосования
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
@@ -138,20 +142,17 @@ btnSubmitVote.addEventListener('click', async () => {
 
 // === ЛОГИКА КНОПКИ-ШЕСТЕРЕНКИ (АДМИНКА) ===
 
-// Клик по шестеренке
 btnGear.addEventListener('click', () => {
     authSection.classList.add('hidden');
     voteSection.classList.add('hidden');
     adminLoginSection.classList.remove('hidden');
 });
 
-// Закрыть форму входа
 btnAdminClose.addEventListener('click', () => {
     adminLoginSection.classList.add('hidden');
     authSection.classList.remove('hidden');
 });
 
-// Вход по паролю
 btnAdminLogin.addEventListener('click', async () => {
     const phone = adminPhoneInput.value.trim();
     currentAdminPassword = adminPasswordInput.value.trim();
@@ -170,6 +171,59 @@ btnAdminExit.addEventListener('click', () => {
     currentAdminPassword = '';
 });
 
+// Добавление нового кандидата админом
+if (btnAddCandidate) {
+    btnAddCandidate.addEventListener('click', async () => {
+        const name = newCandidateInput.value.trim();
+        if (!name) return showMessage('Введите имя кандидата!', true);
+
+        try {
+            const res = await fetch('/api/admin/add-candidate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-password': currentAdminPassword
+                },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error);
+
+            newCandidateInput.value = '';
+            showMessage('Кандидат успешно добавлен!');
+            await loadAdminStats();
+        } catch (err) {
+            showMessage(err.message, true);
+        }
+    });
+}
+
+// Удаление кандидата
+async function deleteCandidate(id) {
+    if (!confirm('Удалить этого кандидата?')) return;
+
+    try {
+        const res = await fetch('/api/admin/delete-candidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': currentAdminPassword
+            },
+            body: JSON.stringify({ id })
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        showMessage('Кандидат удален');
+        await loadAdminStats();
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+}
+
+// Загрузка статистики, результатов и управления кандидатами
 async function loadAdminStats() {
     try {
         const res = await fetch('/api/admin/stats', {
@@ -183,7 +237,24 @@ async function loadAdminStats() {
         adminPanelSection.classList.remove('hidden');
         messageDiv.classList.add('hidden');
 
-        // Статистика
+        // 1. Загрузка кандидатов для панели управления (добавление/удаление)
+        if (adminCandidatesList) {
+            const candRes = await fetch('/api/candidates');
+            const candidates = await candRes.json();
+            
+            adminCandidatesList.innerHTML = '';
+            candidates.forEach(c => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display:flex; justify-space-between; align-items:center; background:#222; padding:8px 12px; margin-bottom:5px; border-radius:5px;';
+                div.innerHTML = `
+                    <span>${c.name}</span>
+                    <button onclick="deleteCandidate(${c.id})" style="background:#ff4444; color:#fff; border:none; padding:4px 8px; border-radius:3px; cursor:pointer;">Удалить</button>
+                `;
+                adminCandidatesList.appendChild(div);
+            });
+        }
+
+        // 2. Статистика голосов
         const statsDiv = document.getElementById('results-stats');
         statsDiv.innerHTML = '';
         if (!data.stats || data.stats.length === 0) {
@@ -198,7 +269,7 @@ async function loadAdminStats() {
             });
         }
 
-        // Таблица
+        // 3. Таблица с голосами учеников
         const tableBody = document.getElementById('votes-table-body');
         tableBody.innerHTML = '';
         if (!data.voters || data.voters.length === 0) {
