@@ -10,30 +10,32 @@
     <div class="container">
         <h1>Выборы Президента Школы</h1>
 
-        <!-- ШАГ 1: Ввод данных -->
-        <div id="step-1" class="step-card">
-            <h2>1. Регистрация</h2>
-            <input type="text" id="firstName" placeholder="Имя" required>
-            <input type="text" id="lastName" placeholder="Фамилия" required>
-            <input type="text" id="grade" placeholder="Класс (например, 10-А)" required>
-            <input type="tel" id="phone" placeholder="Номер телефона (87XXXXXXXXX)" required>
-            <button id="btn-request-code">Получить код в Telegram</button>
+        <!-- ЭКРАН 1: Авторизация по номеру и TG -->
+        <div id="auth-screen" class="card">
+            <h2>Авторизация</h2>
+            <div class="form-group">
+                <input type="tel" id="phone" placeholder="Номер телефона (87XXXXXXXXX)">
+                <button id="btn-get-code">Получить код</button>
+            </div>
+
+            <div id="telegram-block" class="form-group hidden">
+                <a id="bot-link" href="#" target="_blank" class="tg-btn">Перейти в ТГ бота</a>
+                <input type="text" id="telegramCode" placeholder="Код из бота" maxlength="4">
+                <button id="btn-verify-code">Проверить</button>
+            </div>
         </div>
 
-        <!-- ШАГ 2: Подтверждение кода -->
-        <div id="step-2" class="step-card hidden">
-            <h2>2. Подтверждение через Telegram</h2>
-            <p>Нажмите на кнопку ниже, запустите бота и скопируйте код:</p>
-            <a id="bot-link" href="#" target="_blank" class="bot-btn">Открыть Telegram-бота 🚀</a>
-            <input type="text" id="telegramCode" placeholder="Введите 4-значный код" maxlength="4">
-            <button id="btn-verify-code">Подтвердить код</button>
-        </div>
-
-        <!-- ШАГ 3: Голосование -->
-        <div id="step-3" class="step-card hidden">
-            <h2>3. Выберите кандидата</h2>
+        <!-- ЭКРАН 2: Анкетные данные + Голосование -->
+        <div id="vote-screen" class="card hidden">
+            <h2>Заполнение данных и выбор</h2>
+            <input type="text" id="firstName" placeholder="Имя">
+            <input type="text" id="lastName" placeholder="Фамилия">
+            <input type="text" id="grade" placeholder="Класс (например, 10-А)">
+            
+            <h3>Выберите кандидата:</h3>
             <div id="candidates-list"></div>
-            <button id="btn-vote">Проголосовать</button>
+
+            <button id="btn-vote" class="vote-btn">Проголосовать</button>
         </div>
 
         <div id="message" class="message hidden"></div>
