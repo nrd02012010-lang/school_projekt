@@ -9,8 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
-// Твой токен и бот прописаны напрямую
-const BOT_USERNAME = 'school_electionsbot'; // Если у твоего бота другое username, измени здесь (без собаки)
+const BOT_USERNAME = 'school_electionsbot';
 const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
@@ -157,14 +156,12 @@ app.get('/api/admin/stats', (req, res) => {
     }
 
     const statsQuery = `
-        SELECT c.id, c.name, COUNT(v.id) as votes 
+        SELECT c.id, c.name, c.votes 
         FROM candidates c 
-        LEFT JOIN voters v ON c.id = v.candidateId 
-        GROUP BY c.id
     `;
 
     const votersQuery = `
-        SELECT v.fullName, v.grade, v.phone, c.name as candidateName 
+        SELECT v.id, v.fullName, v.grade, v.phone, c.name as candidateName 
         FROM voters v 
         JOIN candidates c ON v.candidateId = c.id 
         ORDER BY v.id DESC
@@ -177,6 +174,64 @@ app.get('/api/admin/stats', (req, res) => {
             if (err) return res.status(500).json({ error: 'Ошибка БД: ' + err.message });
             res.json({ stats, voters });
         });
+    });
+});
+
+// Сброс конкретного голоса ученика
+app.post('/api/admin/reset-voter', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { voterId } = req.body;
+    if (!voterId) return res.status(400).json({ error: 'Не указан ID проголосовавшего' });
+
+    db.get('SELECT candidateId FROM voters WHERE id = ?', [voterId], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: 'Голос не найден' });
+
+        const candidateId = row.candidateId;
+
+        db.run('DELETE FROM voters WHERE id = ?', [voterId], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            db.run('UPDATE candidates SET votes = MAX(0, votes - 1) WHERE id = ?', [candidateId], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true });
+            });
+        });
+    });
+});
+
+// Прибавить голос кандидату вручную (+1)
+app.post('/api/admin/add-vote', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { candidateId } = req.body;
+    if (!candidateId) return res.status(400).json({ error: 'Не указан ID кандидата' });
+
+    db.run('UPDATE candidates SET votes = votes + 1 WHERE id = ?', [candidateId], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// Убавить голос кандидату вручную (-1)
+app.post('/api/admin/sub-vote', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { candidateId } = req.body;
+    if (!candidateId) return res.status(400).json({ error: 'Не указан ID кандидата' });
+
+    db.run('UPDATE candidates SET votes = MAX(0, votes - 1) WHERE id = ?', [candidateId], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
     });
 });
 
