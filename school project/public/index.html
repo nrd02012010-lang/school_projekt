@@ -4,127 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Добавить кандидата</title>
-    <style>
-        body {
-            background-color: #121212;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .card {
-            background-color: #1e1e1e;
-            border-radius: 8px;
-            padding: 25px;
-            width: 100%;
-            max-width: 450px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Красная плашка ошибки */
-        .error-banner {
-            background-color: #721c24;
-            color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 12px;
-            text-align: center;
-            font-weight: bold;
-            border-radius: 4px;
-            margin-bottom: 20px;
-            display: none; /* Скрыта по умолчанию */
-        }
-
-        h2, h3 {
-            text-align: center;
-            letter-spacing: 1px;
-            margin-top: 20px;
-            margin-bottom: 15px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #ccc;
-        }
-
-        input[type="text"], textarea {
-            width: 100%;
-            padding: 10px;
-            background-color: #2a2a2a;
-            border: 1px solid #444;
-            border-radius: 4px;
-            color: #fff;
-            box-sizing: border-box;
-            font-size: 14px;
-        }
-
-        textarea {
-            height: 80px;
-            resize: vertical;
-        }
-
-        input[type="file"] {
-            color: #ccc;
-        }
-
-        /* Голубые кнопки */
-        .btn-blue {
-            background-color: #00bfff;
-            color: #000000;
-            border: none;
-            padding: 12px;
-            width: 100%;
-            font-weight: bold;
-            font-size: 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background-color 0.2s ease;
-        }
-
-        .btn-blue:hover {
-            background-color: #0099cc;
-        }
-
-        /* Голубой текст */
-        .info-text {
-            color: #00bfff;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        hr {
-            border: 0;
-            height: 1px;
-            background: #333;
-            margin: 20px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        th {
-            text-align: left;
-            color: #aaa;
-            padding: 8px 0;
-            border-bottom: 1px solid #333;
-        }
-    </style>
+    <!-- Подключение CSS файла -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div class="card">
-        <!-- Красная плашка (показывается только при пустом имени) -->
+        <!-- Красная плашка (показывается только при ошибке) -->
         <div id="error-banner" class="error-banner">
             Введите имя кандидата
         </div>
@@ -184,22 +70,17 @@
             const photoInput = document.getElementById('candidate-photo');
             const errorBanner = document.getElementById('error-banner');
 
-            // Получаем текст без пробелов по краям
             const nameValue = nameInput.value.trim();
 
-            // Проверяем: если поле имени пустое
             if (nameValue === "") {
-                errorBanner.style.display = 'block'; // Показываем красную плашку
+                errorBanner.style.display = 'block';
                 return;
             }
 
-            // Если имя введено — скрываем плашку
             errorBanner.style.display = 'none';
 
-            // Логика добавления кандидата
             alert('Кандидат "' + nameValue + '" успешно добавлен!');
 
-            // Сбрасываем поля формы после успешного добавления
             nameInput.value = '';
             classInput.value = '';
             descInput.value = '';
