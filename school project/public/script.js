@@ -1,13 +1,29 @@
 let currentSessionId = null;
 
-const authScreen = document.getElementById('auth-screen');
-const telegramBlock = document.getElementById('telegram-block');
-const voteScreen = document.getElementById('vote-screen');
-
+const phoneInput = document.getElementById('phone');
 const btnGetCode = document.getElementById('btn-get-code');
-const btnVerifyCode = document.getElementById('btn-verify-code');
-const btnVote = document.getElementById('btn-vote');
+const btnBotLink = document.getElementById('btn-bot-link');
+const codeInput = document.getElementById('code');
+const btnVerify = document.getElementById('btn-verify');
+const authSection = document.getElementById('auth-section');
+const voteSection = document.getElementById('vote-section');
+const candidatesList = document.getElementById('candidates-list');
+const btnSubmitVote = document.getElementById('btn-submit-vote');
 const messageDiv = document.getElementById('message');
+
+// Админка
+const btnGear = document.getElementById('btn-gear');
+const adminLoginSection = document.getElementById('admin-login-section');
+const adminPanelSection = document.getElementById('admin-panel-section');
+const adminPhoneInput = document.getElementById('admin-phone');
+const adminPasswordInput = document.getElementById('admin-password');
+const btnAdminLogin = document.getElementById('btn-admin-login');
+const btnAdminClose = document.getElementById('btn-admin-close');
+const btnAdminRefresh = document.getElementById('btn-admin-refresh');
+const btnAdminExit = document.getElementById('btn-admin-exit');
+
+let selectedCandidateId = null;
+let currentAdminPassword = '';
 
 function showMessage(text, isError = false) {
     messageDiv.textContent = text;
@@ -15,9 +31,9 @@ function showMessage(text, isError = false) {
     messageDiv.classList.remove('hidden');
 }
 
-// 1. Ввод телефона -> получаем ссылку
+// 1. Запрос кода
 btnGetCode.addEventListener('click', async () => {
-    const phone = document.getElementById('phone').value.trim();
+    const phone = phoneInput.value.trim();
     if (!phone) return showMessage('Введите номер телефона!', true);
 
     try {
@@ -26,23 +42,26 @@ btnGetCode.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ phone })
         });
-
         const data = await res.json();
+
         if (!res.ok) throw new Error(data.error);
 
         currentSessionId = data.sessionId;
-        document.getElementById('bot-link').href = data.botLink;
-        telegramBlock.classList.remove('hidden');
-        showMessage('Перейдите в ТГ бота и получите код');
+        
+        // Настраиваем ссылку на бота
+        btnBotLink.href = data.botLink;
+        btnBotLink.classList.remove('hidden');
+
+        showMessage('Нажмите синюю кнопку ниже, чтобы перейти в бота!');
     } catch (err) {
         showMessage(err.message, true);
     }
 });
 
-// 2. Ввод кода -> проверка и переход к анкете
-btnVerifyCode.addEventListener('click', async () => {
-    const code = document.getElementById('telegramCode').value.trim();
-    if (!code) return showMessage('Введите код из бота!', true);
+// 2. Проверка кода из бота
+btnVerify.addEventListener('click', async () => {
+    const code = codeInput.value.trim();
+    if (!code || !currentSessionId) return showMessage('Сначала получите код!', true);
 
     try {
         const res = await fetch('/api/verify-code', {
@@ -50,52 +69,50 @@ btnVerifyCode.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sessionId: currentSessionId, code })
         });
-
         const data = await res.json();
+
         if (!res.ok) throw new Error(data.error);
 
-        authScreen.classList.add('hidden');
-        voteScreen.classList.remove('hidden');
-        showMessage('Код подтвержден. Заполните данные!');
-
+        authSection.classList.add('hidden');
+        voteSection.classList.remove('hidden');
+        showMessage('Номер подтвержден! Заполните анкету.');
         loadCandidates();
     } catch (err) {
         showMessage(err.message, true);
     }
 });
 
-// Загрузка кандидатов
+// 3. Загрузка кандидатов
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
         const candidates = await res.json();
 
-        const listDiv = document.getElementById('candidates-list');
-        listDiv.innerHTML = '';
-
+        candidatesList.innerHTML = '';
         candidates.forEach(c => {
-            const label = document.createElement('label');
-            label.className = 'candidate-option';
-            label.innerHTML = `
-                <input type="radio" name="candidate" value="${c.id}">
-                <span>${c.name}</span>
-            `;
-            listDiv.appendChild(label);
+            const div = document.createElement('div');
+            div.className = 'candidate-option';
+            div.textContent = c.name;
+            div.onclick = () => {
+                document.querySelectorAll('.candidate-option').forEach(el => el.classList.remove('selected'));
+                div.classList.add('selected');
+                selectedCandidateId = c.id;
+            };
+            candidatesList.appendChild(div);
         });
     } catch (err) {
         showMessage('Ошибка загрузки кандидатов', true);
     }
 }
 
-// 3. Финальная отправка голоса
-btnVote.addEventListener('click', async () => {
-    const firstName = document.getElementById('firstName').value.trim();
-    const lastName = document.getElementById('lastName').value.trim();
+// 4. Отправка голоса
+btnSubmitVote.addEventListener('click', async () => {
+    const fullName = document.getElementById('fullName').value.trim();
     const grade = document.getElementById('grade').value.trim();
-    const selected = document.querySelector('input[name="candidate"]:checked');
 
-    if (!firstName || !lastName || !grade) return showMessage('Заполните Имя, Фамилию и Класс!', true);
-    if (!selected) return showMessage('Выберите кандидата!', true);
+    if (!fullName || !grade || !selectedCandidateId) {
+        return showMessage('Заполните все поля и выберите кандидата!', true);
+    }
 
     try {
         const res = await fetch('/api/vote', {
@@ -103,18 +120,102 @@ btnVote.addEventListener('click', async () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 sessionId: currentSessionId,
-                fullName: `${firstName} ${lastName}`,
+                fullName,
                 grade,
-                candidateId: selected.value
+                candidateId: selectedCandidateId
             })
         });
-
         const data = await res.json();
+
         if (!res.ok) throw new Error(data.error);
 
-        voteScreen.classList.add('hidden');
-        showMessage('Ваш голос успешно принят! Спасибо за участие.');
+        voteSection.classList.add('hidden');
+        showMessage('Спасибо! Ваш голос учтен.');
     } catch (err) {
         showMessage(err.message, true);
     }
 });
+
+// === ЛОГИКА КНОПКИ-ШЕСТЕРЕНКИ (АДМИНКА) ===
+
+// Клик по шестеренке
+btnGear.addEventListener('click', () => {
+    authSection.classList.add('hidden');
+    voteSection.classList.add('hidden');
+    adminLoginSection.classList.remove('hidden');
+});
+
+// Закрыть форму входа
+btnAdminClose.addEventListener('click', () => {
+    adminLoginSection.classList.add('hidden');
+    authSection.classList.remove('hidden');
+});
+
+// Вход по паролю
+btnAdminLogin.addEventListener('click', async () => {
+    const phone = adminPhoneInput.value.trim();
+    currentAdminPassword = adminPasswordInput.value.trim();
+
+    if (!phone) return showMessage('Введите ваш телефон!', true);
+    if (!currentAdminPassword) return showMessage('Введите пароль админа!', true);
+
+    await loadAdminStats();
+});
+
+btnAdminRefresh.addEventListener('click', loadAdminStats);
+
+btnAdminExit.addEventListener('click', () => {
+    adminPanelSection.classList.add('hidden');
+    authSection.classList.remove('hidden');
+    currentAdminPassword = '';
+});
+
+async function loadAdminStats() {
+    try {
+        const res = await fetch('/api/admin/stats', {
+            headers: { 'x-admin-password': currentAdminPassword }
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Неверный пароль!');
+
+        adminLoginSection.classList.add('hidden');
+        adminPanelSection.classList.remove('hidden');
+        messageDiv.classList.add('hidden');
+
+        // Статистика
+        const statsDiv = document.getElementById('results-stats');
+        statsDiv.innerHTML = '';
+        if (!data.stats || data.stats.length === 0) {
+            statsDiv.innerHTML = '<p>Кандидатов пока нет.</p>';
+        } else {
+            data.stats.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'candidate-option';
+                div.style.cursor = 'default';
+                div.innerHTML = `<strong>${item.name}</strong>: <span style="color:#00ff66; font-size:18px;">${item.votes}</span> голосов`;
+                statsDiv.appendChild(div);
+            });
+        }
+
+        // Таблица
+        const tableBody = document.getElementById('votes-table-body');
+        tableBody.innerHTML = '';
+        if (!data.voters || data.voters.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="4">Пока никто не проголосовал.</td></tr>';
+        } else {
+            data.voters.forEach(voter => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${voter.fullName}</td>
+                    <td>${voter.grade}</td>
+                    <td>${voter.phone}</td>
+                    <td style="color:#00ff66;">${voter.candidateName}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    } catch (err) {
+        showMessage(err.message, true);
+    }
+}
