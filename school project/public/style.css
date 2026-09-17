@@ -1,0 +1,121 @@
+* {
+    box-sizing: border-box;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+body {
+    background-color: #121212;
+    color: #00ff66;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+}
+
+.container {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+}
+
+h1, h2, h3 {
+    text-align: center;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.card {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+input {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    color: #fff;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+input:focus {
+    border-color: #00ff66;
+}
+
+button, .tg-btn {
+    background-color: #00ff66;
+    color: #000;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: center;
+    text-decoration: none;
+    display: block;
+}
+
+button:hover, .tg-btn:hover {
+    background-color: #00cc52;
+}
+
+.tg-btn {
+    background-color: #0088cc;
+    color: #fff;
+}
+
+.tg-btn:hover {
+    background-color: #006699;
+}
+
+.candidate-option {
+    display: block;
+    background: #2a2a2a;
+    padding: 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #fff;
+}
+
+.candidate-option input {
+    width: auto;
+    margin-right: 10px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.message {
+    padding: 10px;
+    text-align: center;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.message.error {
+    background-color: #550000;
+    color: #ff6666;
+}
+
+.message.success {
+    background-color: #004400;
+    color: #66ff66;
+}
