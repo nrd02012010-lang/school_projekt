@@ -55,7 +55,6 @@ btnGetCode.addEventListener('click', async () => {
         if (!res.ok) throw new Error(data.error);
 
         currentSessionId = data.sessionId;
-        
         btnBotLink.href = data.botLink;
         btnBotLink.classList.remove('hidden');
 
@@ -89,36 +88,41 @@ btnVerify.addEventListener('click', async () => {
     }
 });
 
-// 3. Загрузка кандидатов для голосования учеников
+// 3. Загрузка кандидатов в виде вертикальной ленты карточек
 async function loadCandidates() {
     try {
         const res = await fetch('/api/candidates');
         const candidates = await res.json();
 
         candidatesList.innerHTML = '';
-        candidates.forEach(c => {
-            const div = document.createElement('div');
-            div.className = 'candidate-option';
-            div.style.cssText = 'display:flex; gap:15px; align-items:center; text-align:left; padding:12px; margin-bottom:10px; cursor:pointer; border:1px solid #444; border-radius:8px;';
-            
-            const photoHtml = c.photoUrl ? `<img src="${c.photoUrl}" style="width:60px; height:60px; object-fit:cover; border-radius:50%; flex-shrink:0;">` : '';
-            const gradeHtml = c.grade ? `<span style="color:#00d2ff; font-size:14px;"> (${c.grade})</span>` : '';
-            const descHtml = c.description ? `<p style="font-size:12px; color:#aaa; margin:4px 0 0 0;">${c.description}</p>` : '';
+        if (candidates.length === 0) {
+            candidatesList.innerHTML = '<p style="color:#aaa;">Список кандидатов пока пуст.</p>';
+            return;
+        }
 
-            div.innerHTML = `
+        candidates.forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'candidate-card';
+            
+            const photoHtml = c.photoUrl ? `<img src="${c.photoUrl}" alt="${c.name}">` : '';
+            const gradeHtml = c.grade ? `<div class="grade-badge">${c.grade}</div>` : '';
+            const descHtml = c.description ? `<p>${c.description}</p>` : '';
+
+            card.innerHTML = `
                 ${photoHtml}
-                <div>
-                    <strong>${c.name}</strong>${gradeHtml}
-                    ${descHtml}
-                </div>
+                <h3>${c.name}</h3>
+                ${gradeHtml}
+                ${descHtml}
             `;
 
-            div.onclick = () => {
-                document.querySelectorAll('.candidate-option').forEach(el => el.style.borderColor = '#444');
-                div.style.borderColor = '#00d2ff';
+            // Выбор кандидата при клике/тапе по карточке
+            card.onclick = () => {
+                document.querySelectorAll('.candidate-card').forEach(el => el.classList.remove('selected'));
+                card.classList.add('selected');
                 selectedCandidateId = c.id;
             };
-            candidatesList.appendChild(div);
+
+            candidatesList.appendChild(card);
         });
     } catch (err) {
         showMessage('Ошибка загрузки кандидатов', true);
@@ -130,8 +134,11 @@ btnSubmitVote.addEventListener('click', async () => {
     const fullName = document.getElementById('fullName').value.trim();
     const grade = document.getElementById('grade').value.trim();
 
-    if (!fullName || !grade || !selectedCandidateId) {
-        return showMessage('Заполните все поля и выберите кандидата!', true);
+    if (!fullName || !grade) {
+        return showMessage('Введите ваше ФИО и класс!', true);
+    }
+    if (!selectedCandidateId) {
+        return showMessage('Выберите кандидата из списка!', true);
     }
 
     try {
@@ -150,7 +157,7 @@ btnSubmitVote.addEventListener('click', async () => {
         if (!res.ok) throw new Error(data.error);
 
         voteSection.classList.add('hidden');
-        showMessage('Спасибо! Ваш голос учтен.');
+        showMessage('Спасибо! Ваш голос успешно учтен.');
     } catch (err) {
         showMessage(err.message, true);
     }
@@ -187,34 +194,41 @@ btnAdminExit.addEventListener('click', () => {
     currentAdminPassword = '';
 });
 
-// Добавление нового кандидата с доп. инфой
+// Добавление кандидата с загрузкой фото с ПК/Телефона
 if (btnAddCandidate) {
     btnAddCandidate.addEventListener('click', async () => {
         const name = newCandidateName.value.trim();
         const grade = newCandidateGrade.value.trim();
-        const photoUrl = newCandidatePhoto.value.trim();
         const description = newCandidateDescription.value.trim();
+        const photoFile = newCandidatePhoto.files[0];
 
         if (!name) return showMessage('Введите ФИО кандидата!', true);
+
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('grade', grade);
+        formData.append('description', description);
+        if (photoFile) {
+            formData.append('photo', photoFile);
+        }
 
         try {
             const res = await fetch('/api/admin/add-candidate', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'x-admin-password': currentAdminPassword
                 },
-                body: JSON.stringify({ name, grade, photoUrl, description })
+                body: formData
             });
             const data = await res.json();
 
             if (!res.ok) throw new Error(data.error);
 
-            // Очищаем поля ввода
+            // Очищаем форму
             newCandidateName.value = '';
             newCandidateGrade.value = '';
-            newCandidatePhoto.value = '';
             newCandidateDescription.value = '';
+            newCandidatePhoto.value = '';
 
             showMessage('Кандидат успешно добавлен!');
             await loadAdminStats();
@@ -248,7 +262,7 @@ async function deleteCandidate(id) {
     }
 }
 
-// Загрузка данных админки
+// Загрузка статистики для админа
 async function loadAdminStats() {
     try {
         const res = await fetch('/api/admin/stats', {
@@ -262,7 +276,7 @@ async function loadAdminStats() {
         adminPanelSection.classList.remove('hidden');
         messageDiv.classList.add('hidden');
 
-        // Список кандидатов в панели админа
+        // Список кандидатов для админа
         if (adminCandidatesList) {
             const candRes = await fetch('/api/candidates');
             const candidates = await candRes.json();
@@ -279,7 +293,7 @@ async function loadAdminStats() {
             });
         }
 
-        // Результаты голосов
+        // Результаты голосования
         const statsDiv = document.getElementById('results-stats');
         statsDiv.innerHTML = '';
         if (!data.stats || data.stats.length === 0) {
@@ -287,8 +301,7 @@ async function loadAdminStats() {
         } else {
             data.stats.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'candidate-option';
-                div.style.cursor = 'default';
+                div.style.cssText = 'background:#222; padding:10px; border-radius:8px; margin-bottom:8px;';
                 div.innerHTML = `<strong>${item.name}</strong>: <span style="color:#00d2ff; font-size:18px; font-weight:bold;">${item.votes}</span> голосов`;
                 statsDiv.appendChild(div);
             });
