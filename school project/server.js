@@ -6,7 +6,7 @@ const app = express();
 const PORT = 3000;
 
 // твой номер телефона для входа в админку
-const ADMIN_PHONE = '87476475569; 
+const ADMIN_PHONE = '87476475569'; 
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
