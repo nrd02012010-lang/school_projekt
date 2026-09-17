@@ -77,9 +77,20 @@
             <button id="btn-admin-close" class="btn" style="background:#555; margin-top:5px;">Отмена</button>
         </div>
 
-        <!-- 4. ПАНЕЛЬ АДМИНА (Результаты) -->
+        <!-- 4. ПАНЕЛЬ АДМИНА (Результаты и Кандидаты) -->
         <div id="admin-panel-section" class="card hidden">
-            <h2>ПАНЕЛЬ АДМИНИСТРАТОРА</h2>
+            <h2>УПРАВЛЕНИЕ КАНДИДАТАМИ</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" id="new-candidate-name" placeholder="ФИО нового кандидата" style="margin: 0;">
+                <button id="btn-add-candidate" class="btn" style="width: auto; padding: 0 15px;">Добавить</button>
+            </div>
+
+            <h3>Текущие кандидаты:</h3>
+            <div id="admin-candidates-list" style="margin-bottom: 20px;"></div>
+
+            <hr style="border-color: #444; margin: 20px 0;">
+
+            <h2>РЕЗУЛЬТАТЫ ГОЛОСОВАНИЯ</h2>
             <button id="btn-admin-refresh" class="btn" style="margin-bottom: 15px;">Обновить данные</button>
             
             <div id="results-stats"></div>
