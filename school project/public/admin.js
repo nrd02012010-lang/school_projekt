@@ -8,7 +8,7 @@ async function loadAdminData() {
     const passwordInput = document.getElementById('adminPassword');
 
     if (loginInput) currentLogin = loginInput.value.trim();
-    if (passwordInput) currentPassword = passwordPasswordInput ? passwordInput.value.trim() : currentPassword;
+    if (passwordInput) currentPassword = passwordInput.value.trim();
 
     // Если значение из полей пустые, берем то, что вводили ранее
     if (!currentLogin) currentLogin = document.getElementById('adminLogin')?.value.trim() || '';
@@ -161,6 +161,7 @@ async function addCandidate() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'x-admin-login': currentLogin,
                 'x-admin-password': currentPassword
             },
             body: JSON.stringify({ name, grade })
@@ -177,6 +178,29 @@ async function addCandidate() {
         }
     } catch (err) {
         alert('Ошибка сети: ' + err.message);
+    }
+}
+
+// Функция быстрой смены голоса участника
+async function changeVoterCandidate(voterId, newCandidateId) {
+    try {
+        const res = await fetch('/api/admin/change-voter-candidate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-login': currentLogin,
+                'x-admin-password': currentPassword
+            },
+            body: JSON.stringify({ voterId, newCandidateId })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Ошибка смены голоса');
+
+        loadAdminData();
+    } catch (err) {
+        alert('Не удалось изменить голос: ' + err.message);
+        loadAdminData();
     }
 }
 
