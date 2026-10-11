@@ -80,7 +80,7 @@ app.post('/api/request-code', (req, res) => {
     });
 });
 
-// Обработка /start в Telegram
+// Обработка /start в Telegram — теперь выдает кнопку
 bot.onText(/\/start (.+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const sessionId = match[1];
@@ -89,10 +89,42 @@ bot.onText(/\/start (.+)/, (msg, match) => {
         return bot.sendMessage(chatId, 'Сессия истекла. Запросите код заново на сайте.');
     }
 
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    sessions[sessionId].code = code;
+    // Отправляем сообщение с кнопкой вместо кода
+    bot.sendMessage(chatId, 'Добро пожаловать! Нажмите на кнопку ниже, чтобы получить код для авторизации:', {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '🔑 Получить код', callback_data: `get_code_${sessionId}` }
+                ]
+            ]
+        }
+    });
+});
 
-    bot.sendMessage(chatId, `Ваш код для авторизации: ${code}`);
+// Обработка нажатия на инлайн-кнопку
+bot.on('callback_query', (query) => {
+    const chatId = query.message.chat.id;
+    const data = query.data;
+
+    // Проверяем, что это наша кнопка получения кода
+    if (data.startsWith('get_code_')) {
+        const sessionId = data.replace('get_code_', '');
+
+        if (!sessions[sessionId] || Date.now() > sessions[sessionId].expires) {
+            bot.answerCallbackQuery(query.id, { text: 'Сессия истекла!', show_alert: true });
+            return bot.sendMessage(chatId, 'Сессия истекла. Запросите код заново на сайте.');
+        }
+
+        // Генерируем код только при нажатии
+        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        sessions[sessionId].code = code;
+
+        // Подтверждаем нажатие для Telegram (чтобы убрать значок загрузки на кнопке)
+        bot.answerCallbackQuery(query.id);
+
+        // Отправляем код пользователю
+        bot.sendMessage(chatId, `Ваш код для авторизации: <b>${code}</b>`, { parse_mode: 'HTML' });
+    }
 });
 
 // 2. Проверка кода
@@ -277,4 +309,43 @@ app.post('/api/admin/delete-candidate', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
+});
+// === АДМИНКА: СМЕНА ВЫБОРА КАНДИДАТА У ИЗБИРАТЕЛЯ ===
+app.post('/api/admin/change-voter-candidate', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'Неверный пароль админа' });
+    }
+
+    const { voterId, newCandidateId } = req.body;
+    if (!voterId || !newCandidateId) {
+        return res.status(400).json({ error: 'Укажите ID избирателя и нового кандидата' });
+    }
+
+    // 1. Находим текущий выбор избирателя
+    db.get('SELECT candidateId FROM voters WHERE id = ?', [voterId], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: 'Избиратель не найден' });
+
+        const oldCandidateId = row.candidateId;
+
+        if (oldCandidateId === Number(newCandidateId)) {
+            return res.json({ success: true, message: 'Кандидат не изменился' });
+        }
+
+        // 2. Обновляем кандидата в записи избирателя
+        db.run('UPDATE voters SET candidateId = ? WHERE id = ?', [newCandidateId, voterId], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // 3. Отнимаем 1 голос у старого кандидата
+            db.run('UPDATE candidates SET votes = MAX(0, votes - 1) WHERE id = ?', [oldCandidateId], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                // 4. Прибавляем 1 голос новому кандидату
+                db.run('UPDATE candidates SET votes = votes + 1 WHERE id = ?', [newCandidateId], (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ success: true });
+                });
+            });
+        });
+    });
 });
