@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
 const BOT_USERNAME = 'school_electionsbot';
-const BOT_TOKEN = '8830924380:AAG05JEwPrFUL8u8VK1mevcZOzFEsT89t_g';
+const BOT_TOKEN = '8652642506:AAF6jpsRj7pmHZ1DK5RaCqRaRZD62EvBEFo';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const db = new sqlite3.Database('./database.db');
