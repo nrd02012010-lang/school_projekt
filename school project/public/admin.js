@@ -1,32 +1,3 @@
-const loginCard = document.getElementById('login-card');
-const adminPanel = document.getElementById('admin-panel');
-const adminPasswordInput = document.getElementById('adminPassword');
-const btnLogin = document.getElementById('btn-login');
-const btnRefresh = document.getElementById('btn-refresh');
-const messageDiv = document.getElementById('message');
-
-let currentPassword = '';
-
-function showMessage(text, isError = false) {
-    messageDiv.textContent = text;
-    messageDiv.className = `message ${isError ? 'error' : 'success'}`;
-    messageDiv.classList.remove('hidden');
-}
-
-btnLogin.addEventListener('click', () => {
-    currentPassword = adminPasswordInput.value.trim();
-    if (!currentPassword) return showMessage('Введите личный код доступа!', true);
-    loadAdminData();
-});
-
-adminPasswordInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        btnLogin.click();
-    }
-});
-
-btnRefresh.addEventListener('click', loadAdminData);
-
 async function loadAdminData() {
     try {
         const res = await fetch('/api/admin/stats', {
@@ -55,22 +26,61 @@ async function loadAdminData() {
             });
         }
 
-        // Вывод таблицы участников
+        // Вывод таблицы участников с возможностью смены кандидата
         const tableBody = document.getElementById('votes-table-body');
         tableBody.innerHTML = '';
         if (!data.voters || data.voters.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="4" style="padding: 10px;">Пока никто не проголосовал.</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="5" style="padding: 10px;">Пока никто не проголосовал.</td></tr>';
         } else {
             data.voters.forEach(voter => {
+                // Создаем выпадающий список со всеми кандидатами
+                let optionsHtml = '';
+                data.stats.forEach(cand => {
+                    const isSelected = cand.name === voter.candidateName ? 'selected' : '';
+                    optionsHtml += `<option value="${cand.id}" ${isSelected}>${cand.name}</option>`;
+                });
+
                 const tr = document.createElement('tr');
                 tr.style.borderBottom = '1px solid #333';
                 tr.innerHTML = `
                     <td style="padding: 10px;">${voter.fullName}</td>
                     <td style="padding: 10px;">${voter.grade}</td>
                     <td style="padding: 10px;">${voter.phone}</td>
-                    <td style="padding: 10px; color: #00ff66;">${voter.candidateName}</td>
+                    <td style="padding: 10px;">
+                        <select class="candidate-select" data-voter-id="${voter.id}" style="background: #222; color: #fff; border: 1px solid #444; padding: 5px; border-radius: 4px;">
+                            ${optionsHtml}
+                        </select>
+                    </td>
                 `;
                 tableBody.appendChild(tr);
+            });
+
+            // Навешиваем событие изменения на каждый селект
+            document.querySelectorAll('.candidate-select').forEach(select => {
+                select.addEventListener('change', async (e) => {
+                    const voterId = e.target.getAttribute('data-voter-id');
+                    const newCandidateId = e.target.value;
+
+                    try {
+                        const response = await fetch('/api/admin/change-voter-candidate', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-admin-password': currentPassword
+                            },
+                            body: JSON.stringify({ voterId, newCandidateId })
+                        });
+
+                        const result = await response.json();
+                        if (!response.ok) throw new Error(result.error || 'Ошибка при смене выбора');
+
+                        // Перезагружаем данные админки, чтобы обновились и голоса, и таблица
+                        loadAdminData();
+                    } catch (err) {
+                        alert('Не удалось изменить голос: ' + err.message);
+                        loadAdminData(); // Возвращаем селект в исходное положение при ошибке
+                    }
+                });
             });
         }
 
