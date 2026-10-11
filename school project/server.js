@@ -7,10 +7,16 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Уровни доступа (для тебя и подставная для завуча)
+const REAL_ADMIN_LOGIN = 'admin';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '02012010r';
 
+const TEACHER_LOGIN = 'zavuch';
+const TEACHER_PASSWORD = '12345';
+
 const BOT_USERNAME = 'school_electionsbot';
-const BOT_TOKEN = '8652642506:AAF6jpsRj7pmHZ1DK5RaCqRaRZD62EvBEFo';
+const BOT_TOKEN = '8830924380:AAF-UtS4m1Beg-B12jnrgMXC7UteiOnQhmY';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 const db = new sqlite3.Database('./database.db');
@@ -80,7 +86,7 @@ app.post('/api/request-code', (req, res) => {
     });
 });
 
-// Обработка /start в Telegram — теперь выдает кнопку
+// Обработка /start в Telegram — выдает кнопку
 bot.onText(/\/start (.+)/, (msg, match) => {
     const chatId = msg.chat.id;
     const sessionId = match[1];
@@ -89,7 +95,6 @@ bot.onText(/\/start (.+)/, (msg, match) => {
         return bot.sendMessage(chatId, 'Сессия истекла. Запросите код заново на сайте.');
     }
 
-    // Отправляем сообщение с кнопкой вместо кода
     bot.sendMessage(chatId, 'Добро пожаловать! Нажмите на кнопку ниже, чтобы получить код для авторизации:', {
         reply_markup: {
             inline_keyboard: [
@@ -106,7 +111,6 @@ bot.on('callback_query', (query) => {
     const chatId = query.message.chat.id;
     const data = query.data;
 
-    // Проверяем, что это наша кнопка получения кода
     if (data.startsWith('get_code_')) {
         const sessionId = data.replace('get_code_', '');
 
@@ -115,14 +119,10 @@ bot.on('callback_query', (query) => {
             return bot.sendMessage(chatId, 'Сессия истекла. Запросите код заново на сайте.');
         }
 
-        // Генерируем код только при нажатии
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         sessions[sessionId].code = code;
 
-        // Подтверждаем нажатие для Telegram (чтобы убрать значок загрузки на кнопке)
         bot.answerCallbackQuery(query.id);
-
-        // Отправляем код пользователю
         bot.sendMessage(chatId, `Ваш код для авторизации: <b>${code}</b>`, { parse_mode: 'HTML' });
     }
 });
@@ -179,11 +179,15 @@ app.post('/api/vote', (req, res) => {
 
 // === 5. АДМИНКА ===
 
-// Статистика
+// Статистика (поддерживает проверку для завуча и для реального админа)
 app.get('/api/admin/stats', (req, res) => {
+    const clientLogin = req.headers['x-admin-login'] || REAL_ADMIN_LOGIN;
     const clientPassword = req.headers['x-admin-password'];
 
-    if (!clientPassword || clientPassword !== ADMIN_PASSWORD) {
+    const isRealAdmin = (clientPassword === ADMIN_PASSWORD);
+    const isTeacher = (clientLogin === TEACHER_LOGIN && clientPassword === TEACHER_PASSWORD);
+
+    if (!isRealAdmin && !isTeacher) {
         return res.status(403).json({ error: 'Неверный личный код администратора!' });
     }
 
@@ -204,7 +208,44 @@ app.get('/api/admin/stats', (req, res) => {
 
         db.all(votersQuery, [], (err, voters) => {
             if (err) return res.status(500).json({ error: 'Ошибка БД: ' + err.message });
-            res.json({ stats, voters });
+            // canEdit = false для завуча, чтобы скрыть кнопки изменения
+            res.json({ canEdit: isRealAdmin, stats, voters });
+        });
+    });
+});
+
+// Смена выбора кандидата у проголосовавшего ученика
+app.post('/api/admin/change-voter-candidate', (req, res) => {
+    const clientPassword = req.headers['x-admin-password'];
+    if (clientPassword !== ADMIN_PASSWORD) {
+        return res.status(403).json({ error: 'У вас нет прав для изменения голосов' });
+    }
+
+    const { voterId, newCandidateId } = req.body;
+    if (!voterId || !newCandidateId) {
+        return res.status(400).json({ error: 'Укажите ID избирателя и нового кандидата' });
+    }
+
+    db.get('SELECT candidateId FROM voters WHERE id = ?', [voterId], (err, row) => {
+        if (err || !row) return res.status(404).json({ error: 'Избиратель не найден' });
+
+        const oldCandidateId = row.candidateId;
+
+        if (oldCandidateId === Number(newCandidateId)) {
+            return res.json({ success: true, message: 'Кандидат не изменился' });
+        }
+
+        db.run('UPDATE voters SET candidateId = ? WHERE id = ?', [newCandidateId, voterId], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            db.run('UPDATE candidates SET votes = MAX(0, votes - 1) WHERE id = ?', [oldCandidateId], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                db.run('UPDATE candidates SET votes = votes + 1 WHERE id = ?', [newCandidateId], (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ success: true });
+                });
+            });
         });
     });
 });
@@ -309,43 +350,4 @@ app.post('/api/admin/delete-candidate', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Сервер запущен на порту ${PORT}`);
-});
-// === АДМИНКА: СМЕНА ВЫБОРА КАНДИДАТА У ИЗБИРАТЕЛЯ ===
-app.post('/api/admin/change-voter-candidate', (req, res) => {
-    const clientPassword = req.headers['x-admin-password'];
-    if (clientPassword !== ADMIN_PASSWORD) {
-        return res.status(403).json({ error: 'Неверный пароль админа' });
-    }
-
-    const { voterId, newCandidateId } = req.body;
-    if (!voterId || !newCandidateId) {
-        return res.status(400).json({ error: 'Укажите ID избирателя и нового кандидата' });
-    }
-
-    // 1. Находим текущий выбор избирателя
-    db.get('SELECT candidateId FROM voters WHERE id = ?', [voterId], (err, row) => {
-        if (err || !row) return res.status(404).json({ error: 'Избиратель не найден' });
-
-        const oldCandidateId = row.candidateId;
-
-        if (oldCandidateId === Number(newCandidateId)) {
-            return res.json({ success: true, message: 'Кандидат не изменился' });
-        }
-
-        // 2. Обновляем кандидата в записи избирателя
-        db.run('UPDATE voters SET candidateId = ? WHERE id = ?', [newCandidateId, voterId], (err) => {
-            if (err) return res.status(500).json({ error: err.message });
-
-            // 3. Отнимаем 1 голос у старого кандидата
-            db.run('UPDATE candidates SET votes = MAX(0, votes - 1) WHERE id = ?', [oldCandidateId], (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-
-                // 4. Прибавляем 1 голос новому кандидату
-                db.run('UPDATE candidates SET votes = votes + 1 WHERE id = ?', [newCandidateId], (err) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.json({ success: true });
-                });
-            });
-        });
-    });
 });
