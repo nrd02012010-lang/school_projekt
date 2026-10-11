@@ -186,10 +186,10 @@
             <button id="btn-submit-vote" class="btn">Отправить голос</button>
         </div>
 
-        <!-- 3. Окно входа в админку -->
+        <!-- 3. Окно входа в админку (обновлено под Логин и Пароль) -->
         <div id="admin-login-section" class="card hidden">
             <h2>ВХОД ДЛЯ АДМИНА ⚙️</h2>
-            <input type="tel" id="admin-phone" placeholder="Ваш номер телефона">
+            <input type="text" id="admin-login" placeholder="Логин (например, admin или zavuch)">
             <input type="password" id="admin-password" placeholder="Пароль администратора">
             <button id="btn-admin-login" class="btn">Войти</button>
             <button id="btn-admin-close" class="btn" style="background:#555; margin-top:5px;">Отмена</button>
@@ -197,22 +197,31 @@
 
         <!-- 4. ПАНЕЛЬ АДМИНА -->
         <div id="admin-panel-section" class="card hidden">
-            <h2>ДОБАВИТЬ КАНДИДАТА</h2>
-            <div class="admin-form-group">
-                <input type="text" id="new-candidate-name" placeholder="ФИО кандидата">
-                <input type="text" id="new-candidate-grade" placeholder="Класс (например, 11-Б)">
-                
-                <label style="font-size:13px; color:#aaa; text-align:left; margin-bottom: 5px;">Загрузить фото кандидата:</label>
-                <input type="file" id="new-candidate-photo" accept="image/*">
-                
-                <textarea id="new-candidate-description" placeholder="Предвыборная программа / описание" rows="3" style="resize:vertical;"></textarea>
-                <button id="btn-add-candidate" class="btn" style="margin-top: 5px;">Добавить кандидата</button>
+            
+            <!-- Индикатор режима наблюдения для завуча -->
+            <div id="read-only-badge" style="background: #ff9800; color: #000; padding: 8px; border-radius: 6px; font-weight: bold; margin-bottom: 15px; display: none; text-align: center;">
+                👁️ Режим наблюдения (только чтение)
             </div>
 
-            <h3 style="text-align: left; margin-top: 15px;">Текущие кандидаты:</h3>
-            <div id="admin-candidates-list" style="margin-bottom: 20px;"></div>
+            <!-- Блок управления кандидатами (скрывается для завуча) -->
+            <div class="admin-only-control">
+                <h2>ДОБАВИТЬ КАНДИДАТА</h2>
+                <div class="admin-form-group">
+                    <input type="text" id="new-candidate-name" placeholder="ФИО кандидата">
+                    <input type="text" id="new-candidate-grade" placeholder="Класс (например, 11-Б)">
+                    
+                    <label style="font-size:13px; color:#aaa; text-align:left; margin-bottom: 5px;">Загрузить фото кандидата:</label>
+                    <input type="file" id="new-candidate-photo" accept="image/*">
+                    
+                    <textarea id="new-candidate-description" placeholder="Предвыборная программа / описание" rows="3" style="resize:vertical;"></textarea>
+                    <button id="btn-add-candidate" class="btn" style="margin-top: 5px;">Добавить кандидата</button>
+                </div>
 
-            <hr style="border-color: #444; margin: 20px 0;">
+                <h3 style="text-align: left; margin-top: 15px;">Текущие кандидаты:</h3>
+                <div id="admin-candidates-list" style="margin-bottom: 20px;"></div>
+
+                <hr style="border-color: #444; margin: 20px 0;">
+            </div>
 
             <h2>РЕЗУЛЬТАТЫ ГОЛОСОВАНИЯ</h2>
             <button id="btn-admin-refresh" class="btn" style="margin-bottom: 15px;">Обновить данные</button>
