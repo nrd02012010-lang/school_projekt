@@ -25,10 +25,10 @@
 <body>
     <h2>Панель Администратора</h2>
 
-    <!-- Блок Авторизации -->
+    <!-- Блок Авторизации с логином и паролем -->
     <div class="card" id="login-card">
         <h3>Вход</h3>
-        <input type="text" id="adminLogin" placeholder="Логин (например, admin или zavuch)">
+        <input type="text" id="adminLogin" placeholder="Логин (admin или zavuch)">
         <input type="password" id="adminPassword" placeholder="Пароль доступа">
         <button onclick="loadAdminData()">Войти</button>
     </div>
@@ -72,150 +72,6 @@
         </div>
     </div>
 
-    <script>
-        let currentLogin = '';
-        let currentPassword = '';
-
-        async function loadAdminData() {
-            currentLogin = document.getElementById('adminLogin').value.trim();
-            currentPassword = document.getElementById('adminPassword').value.trim();
-
-            if (!currentLogin || !currentPassword) {
-                alert('Введите логин и пароль!');
-                return;
-            }
-
-            try {
-                const res = await fetch('/api/admin/stats', {
-                    headers: {
-                        'x-admin-login': currentLogin,
-                        'x-admin-password': currentPassword
-                    }
-                });
-
-                if (res.status === 403) {
-                    alert('Неверный логин или пароль!');
-                    return;
-                }
-
-                const data = await res.json();
-
-                document.getElementById('login-card').style.display = 'none';
-                document.getElementById('admin-content').style.display = 'block';
-
-                // Управление правами редактирования (для завуча скрываем кнопки)
-                const adminControls = document.querySelectorAll('.admin-only-control');
-                adminControls.forEach(el => {
-                    el.style.display = data.canEdit ? 'block' : 'none';
-                });
-
-                document.getElementById('read-only-badge').style.display = data.canEdit ? 'none' : 'block';
-
-                // 1. Отрисовка кандидатов
-                const resultsList = document.getElementById('results-list');
-                resultsList.innerHTML = '';
-                if (!data.stats || data.stats.length === 0) {
-                    resultsList.innerHTML = '<p>Кандидаты еще не добавлены.</p>';
-                } else {
-                    data.stats.forEach(c => {
-                        resultsList.innerHTML += `
-                            <div class="candidate-card">
-                                <h4>${c.name}</h4>
-                                <div class="votes">${c.votes} голосов</div>
-                            </div>
-                        `;
-                    });
-                }
-
-                // 2. Отрисовка таблицы проголосовавших
-                const tbody = document.getElementById('voters-table');
-                tbody.innerHTML = '';
-                if (!data.voters || data.voters.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Пока никто не проголосовал.</td></tr>';
-                } else {
-                    data.voters.forEach(v => {
-                        let candidateCell = '';
-
-                        if (!data.canEdit) {
-                            // Режим завуча: просто зеленый текст
-                            candidateCell = `<b style="color: #00ff66;">${v.candidateName}</b>`;
-                        } else {
-                            // Режим админа: выпадающий список для смены голоса
-                            let optionsHtml = '';
-                            data.stats.forEach(cand => {
-                                const isSelected = cand.name === v.candidateName ? 'selected' : '';
-                                optionsHtml += `<option value="${cand.id}" ${isSelected}>${cand.name}</option>`;
-                            });
-                            candidateCell = `
-                                <select class="candidate-select" onchange="changeVoterCandidate(${v.id}, this.value)">
-                                    ${optionsHtml}
-                                </select>
-                            `;
-                        }
-
-                        tbody.innerHTML += `
-                            <tr>
-                                <td>${v.fullName}</td>
-                                <td>${v.grade}</td>
-                                <td>${v.phone}</td>
-                                <td>${candidateCell}</td>
-                            </tr>
-                        `;
-                    });
-                }
-
-            } catch (err) {
-                alert('Ошибка загрузки данных: ' + err.message);
-            }
-        }
-
-        // Добавление кандидата (только для полного админа)
-        async function addCandidate() {
-            const name = document.getElementById('candName').value.trim();
-            const grade = document.getElementById('candClass').value.trim();
-
-            if (!name) return alert('Введите имя кандидата!');
-
-            const res = await fetch('/api/admin/add-candidate', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'x-admin-password': currentPassword
-                },
-                body: JSON.stringify({ name, grade })
-            });
-
-            if (res.ok) {
-                alert('Кандидат добавлен!');
-                document.getElementById('candName').value = '';
-                document.getElementById('candClass').value = '';
-                loadAdminData();
-            } else {
-                alert('Ошибка при добавлении');
-            }
-        }
-
-        // Смена выбора кандидата у ученика (только для полного админа)
-        async function changeVoterCandidate(voterId, newCandidateId) {
-            try {
-                const res = await fetch('/api/admin/change-voter-candidate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-admin-password': currentPassword
-                    },
-                    body: JSON.stringify({ voterId, newCandidateId })
-                });
-
-                const result = await res.json();
-                if (!res.ok) throw new Error(result.error || 'Ошибка смены голоса');
-
-                loadAdminData(); // Обновляем данные
-            } catch (err) {
-                alert('Не удалось изменить голос: ' + err.message);
-                loadAdminData();
-            }
-        }
-    </script>
+    <script src="admin.js"></script>
 </body>
 </html>
